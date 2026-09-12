@@ -1,0 +1,28 @@
+{
+  "name": "codex-switchboard",
+  "version": "0.1.0",
+  "description": "Native Codex account and subscription model switchboard",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "build:helper": "node bin/build-helper.mjs",
+    "build:macos": "node bin/build-macos-app.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:native": "node bin/test-native.mjs",
+    "check:runtime": "node bin/check-codex-runtime.mjs",
+    "check:packaging": "node bin/check-packaging.mjs",
+    "check:discovery": "node bin/check-discovery.mjs"
+  },
+  "dependencies": {
+    "windsurf-api": "github:dwgx/WindsurfAPI#81370f553718153bcd52297251cc565562d85645",
+    "smol-toml": "1.4.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "patchedDependencies": {
+    "windsurf-api@github:dwgx/WindsurfAPI#81370f5": "patches/windsurf-api-swe2-tool-history.patch"
+  }
+}
