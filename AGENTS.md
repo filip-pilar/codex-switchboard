@@ -7,7 +7,7 @@ One native macOS menu app and one bundled private gateway, focused on Codex Desk
 - This file owns shared agent workflow rules. The current user request determines the task; reviews, audits, and planning are read-only unless changes are authorized.
 - Use `docs/implementation-plan.md` for product requirements and acceptance criteria relevant to the change. Its original integration sequence is background, not a requirement to restart implementation.
 - Use `docs/implementation-status.md` for the latest implementation checkpoint and recorded evidence when continuing product work; historical passes and time-limited authorization are not fresh verification or renewed permission.
-- Use `README.md` for build commands, `docs/architecture.md` for component boundaries, and `docs/setup-recovery.md` for activation/restore. Read reference provenance only when investigating or reusing source.
+- Use `docs/implementation-prompt.md` only as a continuation prompt when needed, and `docs/development-workflow.md` for check prerequisites and outstanding live acceptance. Use `README.md` for build commands, `docs/architecture.md` for component boundaries, and `docs/setup-recovery.md` for activation/restore. Read reference provenance only when investigating or reusing source.
 - `docs/astra-prompting.md` records the rationale for these instructions; it is not another mandatory instruction layer.
 
 ## Work style
@@ -36,7 +36,7 @@ One native macOS menu app and one bundled private gateway, focused on Codex Desk
 
 - Use the essential checks in the plan, scaling to actual changes. Reuse focused fixtures; avoid mirror tests, coverage targets, broad frameworks, and repeated full checks without new evidence.
 - For app implementation, inspect affected runtime/UI behavior and real build results; a tool reporting success is not sufficient evidence of correct behavior. Documentation-only work needs consistency and reference checks, not an app rebuild or UI launch.
-- Live inference requires explicit session authorization and uses bounded scratch requests. Do not infer it from permission to inspect or build. Never purchase credits or push/publish without authorization.
+- Live inference requires explicit session authorization and uses bounded scratch requests. Do not infer it from permission to inspect or build. Never purchase subscriptions/credits, modify unrelated accounts/settings, or push/publish without authorization.
 - State unverified flows honestly. Stop expanding verification once the relevant checks pass and no concrete risk remains.
 
 ## Git
