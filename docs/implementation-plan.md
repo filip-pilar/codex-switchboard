@@ -1,16 +1,14 @@
 # Codex Switchboard: implementation plan
 
-## How to execute this plan
+## How to use this specification
 
-Read root `AGENTS.md`, then this plan and `references/README.md`. Build to the outcomes and constraints below, using the reference source to settle implementation details. Maintain one progress checklist; continue through all stages rather than asking approval at each milestone. Only ask for materially missing input, and continue independent work while waiting. The initial repository and source snapshots are already prepared.
-
-Prompting guidance is centralized in `AGENTS.md` and `docs/astra-prompting.md`; do not stack conflicting instructions from the archived upstream projects. Essential acceptance checks remain part of completion, without expanding a testing project. Separate implemented functionality, observed evidence, and remaining user-dependent activation in the final report.
+This file owns product requirements and full-delivery acceptance criteria. Shared agent workflow and permission boundaries live in [AGENTS.md](../AGENTS.md). Consult the sections relevant to the requested change; use [implementation status](implementation-status.md) for recorded progress and evidence. The source study and original integration sequence below preserve design rationale, not a fresh assignment to rebuild the product. Mechanical adaptations are recorded in `docs/source-provenance.md`.
 
 ## Objective and scope
 
 Build **one repository and one native Mac menu-bar application**, working name **Codex Switchboard**, for connecting accounts and bringing subscription-backed models into Codex Desktop and Codex CLI. The existing LLM Local Gateway and Subagent Model Router applications must not be runtime dependencies. Copy/adapt their useful source into the new project. One app may bundle private helper processes; the user installs and launches only one app.
 
-This is the canonical implementation specification. Repository preparation is complete; implementing the product is the next task. Preserve the current working setup until explicit activation. The completed app must not require patching the installed ChatGPT/Codex application bundle.
+This is the canonical implementation specification. Preserve the current working setup until explicit activation. The completed app must not require patching the installed ChatGPT/Codex application bundle.
 
 Initial deliverable:
 
@@ -183,7 +181,7 @@ Service supervision: one owned helper started by app when integration is enabled
 
 Quit warns that Codex is configured to require the app; provide Cancel, Quit, and Restore Then Quit. Do not silently leave an orphan service running, and do not silently restore settings on every app exit. Login-item support opens this same app; no additional visible app or daemon installer is required.
 
-## Repository and concrete implementation order
+## Repository and original integration sequence
 
 ```text
 codex-switchboard/
@@ -202,7 +200,7 @@ codex-switchboard/
   package.json, bun.lock
 ```
 
-Complete these stages in one implementation task, without pausing after each stage:
+The initial integration followed these stages. Use them to understand dependencies when relevant; current remaining work comes from the implementation checkpoint:
 
 1. Use the prepared repo and verified reference archives, retain source notices/provenance, and import the working transport/private-file/build code and small Swift account core. Remove external repo runtime references and Claude code paths. Establish one helper and signed debug app build.
 2. Implement the provider registry, authenticated model discovery/cache and compatibility normalization, pure route resolution/effort mapping, native proxy, safe headers and compatibility boundaries. Wire discovered IDs through transport validation. Add route status and provider isolation. Keep current user's endpoint/config untouched while developing on the new port.

@@ -1,16 +1,15 @@
-# GPT-6 Astra prompting decisions
+# GPT-6 Astra instruction decisions
 
-Official source fetched through OpenAI Docs during repository preparation:
-[Using GPT-6 Astra — Prompting best practices](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices).
-The fetched page explicitly identified GPT-6 Astra. This moving URL can change; verify the named model before applying future updates.
+Reviewed on 2026-09-12 against the complete OpenAI article [Rethinking skills and prompts for GPT-6 Astra](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra), published 2026-09-11. Earlier preparation used [Using GPT-6 Astra](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices); that moving guide is provenance, not required reading for repository tasks.
 
-Applied to root instructions, the implementation plan, and kickoff prompt:
+## Repository decisions
 
-- State the deliverable and completion evidence; encourage follow-through on authorized work and reasonable routine decisions.
-- Ask only for consequential missing information; finish independent preparation before user-dependent actions.
-- Audit instruction conflicts and keep upstream source guidance distinct from this project's requirements.
-- Specify concise milestone communication and maintain task continuity across steering and long sessions.
-- Calibrate checks to the actual change; avoid unnecessary test expansion or repeated successful checks.
-- Do not mandate delegation volume; use the host's applicable delegation policy.
+- Root `AGENTS.md` owns shared workflow rules and routes context by task. The plan owns product requirements; status records evidence. Neither the original integration sequence nor a prior live-test budget starts new work automatically.
+- Completion follows the authorized task: app changes require relevant runtime evidence, while instruction edits require consistency checks. Preserve independent progress when login or activation needs the user.
+- Detailed routing, authentication, restoration, source reuse, and compatibility contracts remain useful project knowledge. They are retained rather than compressed into generic advice.
+- No repository-owned skills, skill metadata/resources, agent model configuration, CI workflows, or automation definitions were found. No new skill layer is needed. Host-installed skills and archived upstream instructions are outside this repository's ownership.
+- Development guidance targets Astra only. Product support for native models, Devin/Grok discovery, legacy selector rejection fixtures, and the reviewed Devin compatibility preamble remain unchanged. This audit is not a model/API migration or a speculative transport prompt experiment.
 
-This is prompting customization, not an API/model migration. It does not change global reasoning defaults, enable new API features, or claim OpenAI API capabilities automatically exist through Devin. The detailed product architecture is our design; it is not prescribed or validated by OpenAI's prompting guide.
+## Evidence and limits
+
+Confirmed issues were unconditional kickoff reading, duplicated workflow authority, and initial-delivery language applying to maintenance tasks. The edits remove those conflicts. Whether they improve Astra's speed or persistence is a hypothesis; no comparative model evaluation or live inference was performed for this audit. Existing product test evidence is not evidence of instruction effectiveness.
