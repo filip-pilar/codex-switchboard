@@ -1,0 +1,264 @@
+{
+  "date": "2026-09-13",
+  "activation": "not activated",
+  "features": [
+    "Text",
+    "Reasoning selection",
+    "Images",
+    "Tool calls",
+    "File edits",
+    "Subagents",
+    "Agent messaging",
+    "Live web",
+    "Deferred tool search"
+  ],
+  "models": [
+    {
+      "model": "Devin \u2014 Astra",
+      "selector": "gpt-6-astra-low",
+      "advertisedReasoning": [
+        "Low",
+        "Medium",
+        "High",
+        "XHigh",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence",
+      "deferredSearchEvidence": {
+        "originalPromptPasses": 4,
+        "runs": 5,
+        "acceptedBy": "user",
+        "perfectReliabilityClaimed": false
+      }
+    },
+    {
+      "model": "Devin \u2014 Gemini 3.8 Flash",
+      "selector": "gemini-3-8-flash-low",
+      "advertisedReasoning": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 GPT-5.6 Sol",
+      "selector": "gpt-5-6-sol-low",
+      "advertisedReasoning": [
+        "None",
+        "Low",
+        "Medium",
+        "High",
+        "XHigh",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 GPT-5.6 Terra",
+      "selector": "gpt-5-6-terra-low",
+      "advertisedReasoning": [
+        "None",
+        "Low",
+        "Medium",
+        "High",
+        "XHigh",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 GPT-5.6 Luna",
+      "selector": "gpt-5-6-luna-low",
+      "advertisedReasoning": [
+        "None",
+        "Low",
+        "Medium",
+        "High",
+        "XHigh",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 SWE-1.7 Lightning",
+      "selector": "swe-1-7-lightning-medium",
+      "advertisedReasoning": [
+        "Medium",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 SWE-2",
+      "selector": "swe-2-medium",
+      "advertisedReasoning": [
+        "Medium",
+        "High",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 Grok 4.6",
+      "selector": "grok-4-6-low",
+      "advertisedReasoning": [
+        "Low",
+        "Medium",
+        "High",
+        "XHigh"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 DeepSeek V4.1 Flash",
+      "selector": "deepseek-v4-1-flash-high",
+      "advertisedReasoning": [
+        "High",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Devin \u2014 SWE-1.7",
+      "selector": "swe-1-7-medium",
+      "advertisedReasoning": [
+        "Medium",
+        "Max"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "integrated Devin gateway evidence"
+    },
+    {
+      "model": "Grok \u2014 4.6",
+      "selector": "grok-4.6",
+      "advertisedReasoning": [
+        "Low",
+        "Medium",
+        "High",
+        "XHigh"
+      ],
+      "acceptedFeatures": [
+        "Text",
+        "Reasoning selection",
+        "Images",
+        "Tool calls",
+        "File edits",
+        "Subagents",
+        "Agent messaging",
+        "Live web",
+        "Deferred tool search"
+      ],
+      "scope": "prior native Grok gateway evidence"
+    }
+  ]
+}

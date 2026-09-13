@@ -1,9 +1,11 @@
 import { execFile } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, realpathSync } from 'node:fs';
+import {tmpdir} from 'node:os';
+import {privateDirectory,atomicWrite,readProtected} from '../core/files.mjs';
 import { join } from 'node:path';
 import { readDevinSessionToken } from '../core/devin-credentials.mjs';
 import { readGrokAccessToken, sanitizeGrokChildEnvironment } from '../core/grok-credentials.mjs';
-import { scopeForToken, normalizeDiscovery } from '../core/registry.mjs';
+import { scopeForToken, normalizeDiscovery, isRetiredModel } from '../core/registry.mjs';
 import { BoardError } from '../core/errors.mjs';
 
 export function runCLI(executable, args, { env = process.env, timeout = 30000, maxBuffer = 128 * 1024 } = {}) {
@@ -27,13 +29,47 @@ export function parseGrokModels(output, version) {
   const plain = output.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim();
   if (/not authenticated|failed|error|sign in|login/i.test(plain)) throw new BoardError('needs_login', 'Grok needs an official CLI login.', 401);
   const rows = [];
+  let defaultModel;
   for (const line of plain.split(/\r?\n/)) {
+    const defaultLine = /^Default model: (grok-[a-zA-Z0-9_.-]+)$/.exec(line.trim());
+    if (defaultLine) {
+      if (defaultModel) throw new BoardError('unsupported_cli_format', 'Grok returned duplicate default model declarations.');
+      defaultModel = defaultLine[1]; continue;
+    }
+    if (line.trim() === 'You are logged in with grok.com.') continue;
     const match = /^\s*(?:[-*•]\s+)?(grok-[a-zA-Z0-9_.-]+)(?:\s+(?:\(default\)|\[default\]))?\s*$/.exec(line);
     if (match) rows.push({ id: match[1] });
     else if (line.trim() && !/^(?:Available models:?|Models:?)$/i.test(line.trim())) throw new BoardError('unsupported_cli_format', 'The Grok CLI returned an unfamiliar catalog format. Cached models are retained.');
   }
   if (!rows.length) throw new BoardError('invalid_discovery', 'Grok did not list any models. Reconnect to check subscription entitlement.');
+  if (defaultModel && !rows.some(row => row.id === defaultModel)) throw new BoardError('invalid_discovery', 'Grok default model is absent from its catalog.');
   return rows;
+}
+// Join exact official model UIDs; never infer an entitlement from a family name.
+export function enrichDevinCatalog(rows, catalog) {
+  if (!Array.isArray(catalog?.families) || catalog.families.length > 2000) throw new BoardError('invalid_discovery', 'Devin returned unsupported family metadata.');
+  const variants = new Map();
+  for (const family of catalog.families) {
+    if (!Array.isArray(family.variants) || family.variants.length > 2000) throw new BoardError('invalid_discovery', 'Devin returned unsupported variant metadata.');
+    for (const variant of family.variants) {
+      if (typeof variant.model_uid !== 'string' || variants.has(variant.model_uid)) throw new BoardError('invalid_discovery', 'Devin returned duplicate variant metadata.');
+      const uidEffort = /(?:-|_)(none|minimal|low|medium|high|xhigh|max)(?=$|-(?:priority|1m)$)/i.exec(variant.model_uid)?.[1]?.toLowerCase();
+      const labelEffort = /\b(None|Minimal|Low|Medium|High|XHigh|Max)(?: Thinking)?$/.exec(variant.label ?? '')?.[1]?.toLowerCase();
+      if (uidEffort && labelEffort && uidEffort !== labelEffort) throw new BoardError('invalid_discovery', 'Devin returned conflicting reasoning metadata.');
+      const effort = uidEffort ?? labelEffort;
+      variants.set(variant.model_uid, {
+        ...( /claude|anthropic|opus|sonnet|haiku/i.test(`${family.family_uid} ${family.family_label}`) ? {provider:'anthropic'} : {}),
+        capabilities: {
+          ...(Number.isInteger(variant.max_context_tokens) ? {contextWindow:variant.max_context_tokens} : {}),
+          ...(effort ? {efforts:[effort], defaultEffort:effort} : {}),
+        },
+      });
+    }
+  }
+  return rows.map(row => {
+    const metadata = variants.get(row.selector);
+    return metadata ? {...row, ...metadata, capabilities:{...row.capabilities,...metadata.capabilities}} : row;
+  });
 }
 export async function connectionScope(provider, paths) {
   return scopeForToken(provider === 'devin' ? readDevinSessionToken(paths.devinCredentialsPath) : readGrokAccessToken(paths.grokCredentialsPath));
@@ -41,25 +77,20 @@ export async function connectionScope(provider, paths) {
 export async function discoverModels(provider, paths) {
   if (provider === 'devin') {
     const token = readDevinSessionToken(paths.devinCredentialsPath);
-    Object.assign(process.env,{CODEIUM_API_KEY:token,CODEIUM_API_URL:'https://server.codeium.com'});
-    const { fetchCatalog, __setCatalogRequestImpl } = await import('windsurf-api/src/devin-connect-catalog.js');
-    const { request } = await import('node:https');
-    __setCatalogRequestImpl((options, callback) => request(options, response => {
-      let bytes = 0;
-      response.on('data', chunk => { bytes += chunk.length; if (bytes > 4 * 1024 * 1024) response.destroy(new Error('catalog_size_limit')); });
-      callback(response);
-    }));
-    const rows = await fetchCatalog({ token, signal: AbortSignal.timeout(15000) });
-    if (!Array.isArray(rows) || !rows.length) throw new BoardError('invalid_discovery', 'Devin did not return a complete model catalog.');
-    const { setLiveCatalogSelectors, resolveConnectSelector } = await import('windsurf-api/src/devin-connect-models.js');
-    setLiveCatalogSelectors(rows);
-    const models=normalizeDiscovery(provider,rows,{scope:scopeForToken(token),version:'WindsurfAPI 81370f5'});
-    for(const model of models){
-      if(Object.values(model.selectors).some(selector=>{const resolved=resolveConnectSelector(selector);return !resolved.mapped||resolved.selector!==selector;})){
-        model.compatible=false;model.enabled=false;model.compatibilityReason='Requires adapter update: the pinned transport remaps this exact selector.';
-      }
-    }
-    return {scope:scopeForToken(token),models};
+    const cli=findCLI('devin');if(!cli)throw new BoardError('cli_missing','Install the official Devin CLI, then reconnect.');
+    const root=privateDirectory(mkdtempSync(join(realpathSync(tmpdir()),'switchboard-devin-discovery-')));
+    try {
+      const data=privateDirectory(join(root,'data'));privateDirectory(join(data,'devin'));
+      atomicWrite(join(data,'devin/credentials.toml'),readProtected(paths.devinCredentialsPath));
+      const env={PATH:process.env.PATH,HOME:process.env.HOME,XDG_DATA_HOME:data,XDG_CONFIG_HOME:join(root,'config'),XDG_CACHE_HOME:join(root,'cache'),LOG_LEVEL:'off'};
+      const {stdout}=await runCLI(cli,['models','list','--format','json'],{env,timeout:15000,maxBuffer:2*1024*1024});
+      const catalog=JSON.parse(stdout);
+      if(!Array.isArray(catalog.families))throw new BoardError('invalid_discovery','Devin returned unsupported model metadata.');
+      const retained={families:catalog.families.map(f=>({...f,variants:(f.variants??[]).filter(v=>!isRetiredModel('devin',v.model_uid))})).filter(f=>f.variants.length)};
+      const rows=retained.families.flatMap(f=>f.variants.map(v=>({selector:v.model_uid,label:v.label})));
+      const models=normalizeDiscovery('devin',enrichDevinCatalog(rows,retained),{scope:scopeForToken(token),version:'Official Devin CLI ACP'});
+      return {scope:scopeForToken(token),models};
+    } finally {rmSync(root,{recursive:true,force:true});}
   }
   const cli = findCLI('grok');
   if (!cli) throw new BoardError('cli_missing', 'Install the official Grok CLI, then reconnect.');

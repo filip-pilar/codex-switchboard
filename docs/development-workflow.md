@@ -21,12 +21,16 @@ The Swift wrappers use `--disable-sandbox` for SwiftPM's build subprocess sandbo
 
 ## Continuing unfinished acceptance
 
-The [implementation checkpoint](implementation-status.md) records local acceptance and two bounded native/Devin text smoke requests on 2026-09-11. Treat its running-app and login statements as last-observed state. Its eight-request/five-minute authorization is historical, not a reusable budget.
+The current [implementation status](implementation-status.md) and [compatibility matrix](compatibility-validation.md) supersede earlier Connect failures and the full historical catalog sweep. The retained Devin families have integrated acceptance, with Astra Low's 4/5 discovery result explicitly accepted. Exact effort mappings do not certify every higher-effort live workflow.
 
-The specification's remaining live evidence is broader than those two text requests: Astra command/file/screenshot behavior, a Low-to-Medium menu change affecting the next live alias request, Grok text/tools after login, and a user-assisted two-account handoff. Local UI/transport fixtures and prior upstream Low/Medium evidence do not establish those combined live flows in this app. Activation and Desktop restart also remain user-dependent in the recorded checkpoint. Preserve these obligations until actually observed; do not treat the completed local checklist as full live acceptance.
-
-When continuing product work, update the existing status checkpoint with new outcomes, exact evidence, and remaining work. Keep completed observations under its evidence section and the current next action separate. Do not replay its execution history or renew expired authorization by copying it into a new prompt.
+Next product work is final app packaging, recovery review and explicitly authorized activation, then a real Desktop smoke test. Native two-account handoff requires user participation. Structured citations, usage accounting and broad concurrent/mixed-provider workflows remain separate acceptance work. Historical authorization does not authorize future inference or activation.
 
 ## Source and generated ownership
 
 Ordinary builds use the pinned dependency/patch, not extracted references. For source reuse, [references/README.md](../references/README.md) and its manifest own archive verification; `bin/extract-references.py` verifies hashes/member safety and extracts under the ignored directory. Keep upstream AGENTS/skills there as source evidence. Helper build staging transforms the pinned catalog loader under `.build/helper/`; fix the build source/patch rather than its generated copy. Generated app catalogs contain product-facing instructions from `gateway/core/registry.mjs` and `gateway/codex/catalog.mjs`; they are a separate transport compatibility contract, not repository development instructions.
+
+## Integrated Devin ACP checks
+
+Build an isolated helper with `node bin/build-helper.mjs --output .build/acp/switchboard-helper`. Focused checks include `test/acp-transport.test.mjs`, `test/acp-production.test.mjs`, `test/devin-reasoning.test.mjs` and `test/devin-search.test.mjs`.
+
+For authorized live checks, use the tracked [real-gateway driver](../experiments/acp/gateway-acceptance.mjs) and [its instructions](../experiments/acp/README.md). `ACP_PACKAGED=1` selects the compiled worker. Preserve nested Codex workspace sandboxing; an outer sandbox that prevents nested execution is a test prerequisite conflict, not permission to weaken Codex approvals. Metadata-only local evidence stays under ignored `.build/compat-audit/`.

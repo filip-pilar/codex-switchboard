@@ -2,7 +2,7 @@
 
 ## Before activation
 
-Open `dist/Codex Switchboard.app`. It starts its private control helper; it does not redirect Codex or start the public listener before Apply. The existing gateway/router remains available during development. The app's service uses **127.0.0.1:9477**, separate from the previous setup.
+Build the final app package before activation; earlier signed bundles may predate the latest gateway changes. Open `dist/Codex Switchboard.app`. It starts its private control helper; it does not redirect Codex or start the public listener before Apply. The existing gateway/router remains available during development. The app's service uses **127.0.0.1:9477**, separate from the previous setup.
 
 In Connections, **Import / Refresh Current CLI Session** checks authenticated discovery without an inference request. **Connect / Reconnect** opens the official CLI browser flow. Devin and Grok each use the current official CLI identity. Reconnect pauses that provider, cancels its active requests, and reloads only that worker. Missing CLIs open their official installation instructions; they are not redistributed or automatically upgraded.
 
@@ -23,7 +23,7 @@ Provider-only setup creates a local sentinel only after the official runtime con
 
 - **Switchboard selection** follows the app menu on each new request. Menu model/effort changes among applied targets need no global config rewrite or restart.
 - **Astra · Devin** takes the request's reasoning choice and maps it to the exact Astra selector. Low/Medium have prior source evidence; higher advertised levels are not labeled live-verified.
-- **Grok · xAI** remains the alias of its originally registered upstream model. Unverified effort and vision controls are omitted. New versions get distinct identities.
+- **Grok · xAI** remains the alias of its originally registered upstream model. The supported direct model is Grok 4.6, with Low/Medium/High/XHigh and inline images. Retired 4.5 entries cannot route; new versions get distinct identities.
 - **Native Codex models**, including `codex-auto-review`, remain native. Native subagents and existing approval/sandbox settings are retained.
 
 Last request shows the observed provider, actual selector/effort, result and time, separately from the configured menu. It does not claim to identify the foreground task. A missing/unavailable model fails explicitly; it does not silently change provider or model.
@@ -54,7 +54,7 @@ Private state is under `~/Library/Application Support/Codex Switchboard/` (0700;
 
 ## Limits and diagnostics
 
-Inline Astra images and tool identifiers are preserved. Remote image fetching is unsupported. Request/image bodies are limited to 10 MiB before and after decompression and depth 100. Oversize content fails explicitly.
+Inline images for retained Devin families and Grok 4.6, plus caller tool identifiers, are preserved. Remote image fetching is unsupported. Request/image bodies are limited to 10 MiB before and after decompression and depth 100. Oversize content fails explicitly.
 
 External compaction and private continuation that cannot be attributed safely are unsupported. Start a new task when instructed, including when a resumed task contains private state the gateway cannot safely classify after a restart. Native approval failures are explained; the app never fabricates decisions or reduces approval/sandbox requirements.
 

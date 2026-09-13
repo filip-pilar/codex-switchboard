@@ -7,7 +7,10 @@ import { privateDirectory, readJSON, writeJSON, checkPath } from '../gateway/cor
 import { safeError } from '../gateway/core/errors.mjs';
 
 process.umask(0o077);
-if(process.argv.includes('--worker')){
+if(process.argv.includes('--acp-relay')){
+  const {runACPRelay}=await import('../gateway/transport/acp/relay.mjs');
+  await runACPRelay();
+}else if(process.argv.includes('--worker')){
   const {runWorker}=await import('../gateway/service/worker.mjs');
   await runWorker(process.argv[process.argv.indexOf('--worker')+1]);
 }else{

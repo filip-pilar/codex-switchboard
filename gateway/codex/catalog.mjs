@@ -42,19 +42,20 @@ export function modelEntry(model, priority, nativeTemplate) {
   const window=cap.contextWindow ?? 32768;
   return {
     slug:model.id, display_name:model.name,
-    description:model.id === 'switchboard-selected' ? 'Uses the external model and reasoning chosen in the Switchboard menu on the next request.' : `${model.name}. ${model.evidence?.note ?? 'Provider-advertised; not live-verified in this app.'}`,
+    description:model.id === 'switchboard-selected' ? 'Uses the external model and reasoning chosen in the Switchboard menu on the next request.' : `${model.name}.${model.provider === 'grok' ? (model.upstream === 'grok-4.6' ? ' Cached-only web search and provider image generation are unavailable.' : ' Cached-only web search and provider image generation/tool search are unavailable.') : ''} ${model.evidence?.note ?? 'Provider-advertised; not live-verified in this app.'}`,
     default_reasoning_level:cap.defaultEffort,
     supported_reasoning_levels:(cap.efforts ?? []).map(effort => ({ effort,description:`${effort[0].toUpperCase()+effort.slice(1)} reasoning (provider-advertised)` })),
     shell_type:'unified_exec',visibility:model.enabled ? 'list' : 'hide',supported_in_api:true,priority,
     additional_speed_tiers:[],service_tiers:[],default_service_tier:null,availability_nux:null,upgrade:null,
     base_instructions:model.provider === 'devin' && model.upstream === 'gpt-6-astra' ? ASTRA_INSTRUCTIONS : 'You are a coding assistant. Follow the user and developer instructions, use available tools to complete the task, and preserve approval and sandbox requirements.',
     model_messages:null,include_skills_usage_instructions:true,include_plugin_usage_instructions:true,include_apps_usage_instructions:true,
-    supports_reasoning_summary_parameter:false,supports_reasoning_summaries:false,default_reasoning_summary:'none',support_verbosity:false,default_verbosity:null,
+    supports_reasoning_summary_parameter:model.provider==='devin',supports_reasoning_summaries:model.provider==='devin',default_reasoning_summary:model.provider==='devin'?'auto':'none',support_verbosity:false,default_verbosity:null,
     apply_patch_tool_type:'freeform',web_search_tool_type:'text',truncation_policy:{mode:'tokens',limit:10000},supports_parallel_tool_calls:cap.tools === true,
     supports_image_detail_original:cap.images === true,context_window:window,max_context_window:window,auto_compact_token_limit:null,effective_context_window_percent:95,
-    experimental_supported_tools:[],input_modalities:cap.images === true ? ['text','image'] : ['text'],supports_search_tool:cap.tools === true,
-    // Keep installed-client tool policy. These are not permission overrides.
-    ...(nativeTemplate?.tool_mode ? {tool_mode:nativeTemplate.tool_mode} : {}),
+    experimental_supported_tools:[],input_modalities:cap.images === true ? ['text','image'] : ['text'],supports_search_tool:model.provider === 'grok' ? model.upstream === 'grok-4.6' : cap.tools === true,
+    // Native code-only tooling is a model training contract, not a portable
+    // provider capability. Let Codex expose its standard tools here.
+    // Collaboration protocol and approval requirements remain client-owned.
     ...(nativeTemplate?.multi_agent_version ? {multi_agent_version:nativeTemplate.multi_agent_version} : {}),
     ...(nativeTemplate?.node_repl_auto_review_required !== undefined ? {node_repl_auto_review_required:nativeTemplate.node_repl_auto_review_required} : {}),
   };

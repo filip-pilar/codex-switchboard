@@ -67,7 +67,7 @@ export class Controller {
       throw new BoardError('connection_changed','The official CLI identity changed. Models are refreshing for the new connection; retry when ready.',503);
     }
     const worker=await this.workers.start(provider);
-    if(provider==='devin' && selector){const check=await worker.request('validateSelector',{selector});if(!check.exact)throw new BoardError('adapter_selector_mismatch','The pinned transport cannot preserve this exact model selector. Refresh Models or update the adapter; no fallback was used.',503);}
+    if(provider==='devin' && selector){const check=await worker.request('validateSelector',{selector});if(!check.exact)throw new BoardError('adapter_selector_mismatch','The official CLI does not advertise this exact model selector. Refresh Models or update the adapter; no fallback was used.',503);}
     return worker;
   }
   async refreshStale(){

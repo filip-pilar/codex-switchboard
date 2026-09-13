@@ -1,3 +1,5 @@
+> Current implementation amendment (2026-09-13): Devin inference now uses official CLI ACP plus a bundled private MCP relay, replacing the initial Connect selector gate, image tag and static preamble. Official CLI discovery supplies retained exact selectors/reasoning; the user-approved family allowlist is in `gateway/core/registry.mjs`. Grok 4.6 is supported; 4.5 is retired. See [current status](implementation-status.md) and [accepted matrix](compatibility-validation.md). These decisions supersede conflicting initial transport/catalog details below; product isolation, authentication, sandbox and activation boundaries remain unchanged.
+
 # Codex Switchboard: implementation plan
 
 ## How to use this specification

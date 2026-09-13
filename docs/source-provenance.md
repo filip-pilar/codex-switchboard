@@ -1,3 +1,5 @@
+> Current implementation update (2026-09-13): Devin inference now uses the official CLI ACP backend and project-owned private MCP relay. The pinned WindsurfAPI dependency and its transform remain legacy build/reference material; its resolver no longer gates Devin requests. Grok 4.6 image and reasoning capabilities are now advertised after validation. The mechanical notes below record the original implementation; see [architecture](architecture.md) and [current validation](compatibility-validation.md) for the shipped source path and evidence.
+
 # Source provenance and adaptations
 
 All four archive SHA-256 values in `references/manifest.json` were verified before extraction. Every recorded gateway/router working-tree file hash was also verified. `bin/extract-references.py` rejects absolute paths, traversal, symlinks and special members, and extracts only into ignored `references/extracted/`. The archives have not been changed. No upstream instructions were installed as project instructions.

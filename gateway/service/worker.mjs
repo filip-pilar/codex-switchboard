@@ -15,9 +15,9 @@ export async function runWorker(provider) {
   for (const key of ['log','info','warn','error','debug']) console[key]=()=>{};
   const paths=resolveBridgePaths();
   if (provider === 'devin') prepareWorkerEnvironment(paths);
-  let server, chain=Promise.resolve();
+  let server, chain=Promise.resolve(), devinCatalog;
   const send=value => process.stdout.write(JSON.stringify(value)+'\n');
-  const stop=()=>{ server?.closeAllConnections?.(); server?.close(); process.exit(0); };
+  const stop=()=>{ server?.closeAllConnections?.(); if(server)server.close(()=>process.exit(0));else process.exit(0); };
   process.once('SIGTERM',stop); process.once('SIGINT',stop);
   const input=createInterface({input:process.stdin,crlfDelay:Infinity});
   input.on('close',stop);
@@ -32,18 +32,23 @@ export async function runWorker(provider) {
         const { discoverModels,connectionScope,findCLI }=await import('../providers/discovery.mjs');
         let result;
         if (message.op==='scope') result={scope:await connectionScope(provider,paths)};
-        else if (message.op==='discover') result=await discoverModels(provider,paths);
+        else if (message.op==='discover') {
+          result=await discoverModels(provider,paths);
+          if(provider==='devin')devinCatalog={...result,at:Date.now()};
+        }
         else if (message.op==='validateSelector' && provider==='devin') {
-          const {resolveConnectSelector}=await import('windsurf-api/src/devin-connect-models.js');
-          const mapped=resolveConnectSelector(message.selector);result={exact:mapped.mapped&&mapped.selector===message.selector};
+          const scope=await connectionScope('devin',paths);
+          if(!devinCatalog || devinCatalog.scope!==scope || Date.now()-devinCatalog.at>60000)devinCatalog={...await discoverModels('devin',paths),at:Date.now()};
+          result={exact:devinCatalog.models.some(m=>m.compatible&&Object.values(m.selectors).includes(message.selector))};
         }
         else if (message.op==='start') {
           if (!server) {
             if (provider==='devin') {
               const {readDevinSessionToken}=await import('../core/devin-credentials.mjs');
-              const {startDevinTransport}=await import('../transport/devin.mjs');
+              const {startDevinACPTransport}=await import('../transport/devin-acp.mjs');
               privateDirectory(paths.devinUpstreamDataDir);
-              server=await startDevinTransport({port:0,token:readDevinSessionToken(paths.devinCredentialsPath),dataDir:paths.devinUpstreamDataDir,defaultModel:'gpt-6-astra-medium',internalCapability:message.capability});
+              readDevinSessionToken(paths.devinCredentialsPath);
+              server=await startDevinACPTransport({port:0,credentialPath:paths.devinCredentialsPath,cliPath:findCLI('devin'),internalCapability:message.capability});
             } else {
               const {readGrokAccessToken,readGrokCLIVersion}=await import('../core/grok-credentials.mjs');
               const {startGrokTransport}=await import('../transport/grok.mjs');

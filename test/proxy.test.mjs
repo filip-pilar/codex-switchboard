@@ -29,7 +29,7 @@ test('credential allow-list strips native identity and preserves only required c
 test('inline images and tool IDs survive Astra normalization, private continuation fails safely',()=>{
   const ownership=new HistoryOwnership(),route={provider:'devin',selector:'gpt-6-astra-medium',effort:'medium',images:true};
   const body={model:'switchboard-selected',instructions:'Static native preamble',input:[{role:'developer',content:'Keep this developer instruction'},{type:'reasoning',encrypted_content:'native-private-fixture'},{role:'user',content:[{type:'input_image',image_url:'data:image/png;base64,AQID'}]},{type:'function_call',call_id:'call-123',name:'exec',arguments:'{}'},{type:'function_call_output',call_id:'call-123',output:[{type:'input_image',image_url:'data:image/png;base64,BAUG'}]}]};
-  const prepared=prepareExternal(body,route,{},ownership);assert.equal(prepared.input[0].content,'Keep this developer instruction');assert.equal(prepared.input[1].content[0].image_url,'data:image/png;base64,AQID');assert.equal(prepared.input[2].call_id,'call-123');assert.equal(prepared.input[3].call_id,'call-123');assert.equal(prepared.input[3].output[0].image_url,'data:image/png;base64,BAUG');assert.match(prepared.instructions,/helpful coding assistant/);
+  const prepared=prepareExternal(body,route,{},ownership);assert.equal(prepared.input[0].content,'Keep this developer instruction');assert.equal(prepared.input[1].content[0].image_url,'data:image/png;base64,AQID');assert.equal(prepared.input[2].call_id,'call-123');assert.equal(prepared.input[3].call_id,'call-123');assert.equal(prepared.input[3].output[0].image_url,'data:image/png;base64,BAUG');assert.equal(prepared.instructions,body.instructions);
   assert.throws(()=>prepareExternal({...body,previous_response_id:'private'},route,{},ownership),/Start a new task/);
   assert.throws(()=>prepareExternal({...body,input:[{type:'compaction',encrypted_content:'private'}]},route,{},ownership),/Start a new task/);
   assert.throws(()=>prepareExternal({...body,input:[{type:'input_image',image_url:'https://example.invalid/image.png'}]},route,{},ownership),/Remote image/);
@@ -73,4 +73,46 @@ test('both installed-client path forms normalize without doubled upstream v1',()
 test('encoded oversize input receives an explicit 413 instead of a reset connection',async()=>{
   const server=createProxy({getRegistry:fixtureRegistry,getWorker:async()=>{throw new Error('must not reach upstream');}});const port=await listen(server);
   try{const response=await send(port,'/codex/v1/responses',Buffer.alloc(MAX_BODY+1),{'content-length':String(MAX_BODY+1)});assert.equal(response.status,413);assert.match(response.body,/10 MiB/);}finally{await close(server);}
+});
+
+test('retired Grok 4.5 fails locally with stale catalog metadata and no worker startup',async()=>{
+  let registry=mergeDiscovery(fixtureRegistry(),'grok',normalizeDiscovery('grok',[{id:'grok-4.5'}],{scope:'g'}),'g');
+  registry.appliedModels=structuredClone(registry.models);
+  registry.appliedModels.find(m=>m.provider==='grok').capabilities.images=true;
+  let workerStarts=0;
+  const server=createProxy({getRegistry:()=>registry,getWorker:async()=>{workerStarts++;throw new Error('must not start');}}),port=await listen(server);
+  const image={type:'input_image',image_url:'data:image/png;base64,AQID'};
+  try{
+    for(const input of ['hello',[{role:'user',content:[image]}],[{type:'function_call_output',call_id:'c',output:[image]}]]){
+      const response=await send(port,'/codex/v1/responses',JSON.stringify({model:'switchboard-grok',input}));
+      assert.equal(response.status,400);assert.match(response.body,/model_retired/);assert.match(response.body,/Choose Grok 4.6/);
+    }
+    assert.equal(workerStarts,0);
+    const route={provider:'grok',selector:'grok-4.5',images:true};
+    assert.equal(prepareExternal({input:'hello'},route,{},new HistoryOwnership()).input,'hello');
+    assert.deepEqual(prepareExternal({input:[{role:'user',content:[image]}]},{...route,selector:'grok-4.6'},{},new HistoryOwnership()).input[0].content,[image]);
+  }finally{await close(server);}
+});
+
+test('Devin search proxy translates JSON and SSE for SWE and Astra',async()=>{
+ const seen=[];
+ const upstream=createServer(async(req,res)=>{
+  const chunks=[];for await(const c of req)chunks.push(c);const body=JSON.parse(Buffer.concat(chunks));seen.push(body);
+  const output=[{type:'function_call',name:'switchboard_tool_search',call_id:'c',arguments:'{"query":"beacon"}'}];
+  const payload=body.stream ? 'data: '+JSON.stringify({type:'response.completed',response:{output}})+'\n\n' : JSON.stringify({output});
+  res.writeHead(200,{'content-type':body.stream?'text/event-stream':'application/json','content-length':Buffer.byteLength(payload)});res.end(payload);
+ });
+ const upstreamPort=await listen(upstream);
+ let registry=fixtureRegistry();registry=mergeDiscovery(registry,'devin',normalizeDiscovery('devin',[{selector:'swe-1-7'},{selector:'gpt-6-astra-medium'}],{scope:'d'}),'d');registry.appliedModels=structuredClone(registry.models);
+ const proxy=createProxy({getRegistry:()=>registry,getWorker:async()=>({port:upstreamPort,capability:'fixture-capability'})}),port=await listen(proxy);
+ const tools=[{type:'tool_search',execution:'client',parameters:{type:'object',properties:{query:{type:'string'}},required:['query']}}];
+ try {
+  for(const stream of [false,true]) {
+   const response=await send(port,'/codex/v1/responses',JSON.stringify({model:'swe-1-7',stream,input:'hello',tools}));
+   assert.equal(response.status,200);assert.match(response.body,/tool_search_call/);assert.match(response.body,/"execution":"client"/);assert.equal(response.headers['content-length'],undefined);
+   assert.equal(seen.at(-1).tools[0].name,'switchboard_tool_search');
+  }
+  await send(port,'/codex/v1/responses',JSON.stringify({model:'switchboard-devin-astra',input:'hello',tools}));
+  assert.equal(seen.at(-1).tools[0].name,'switchboard_tool_search');
+ }finally{await close(proxy);await close(upstream);}
 });

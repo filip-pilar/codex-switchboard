@@ -50,22 +50,59 @@ export function normalizeHistory(body, route, ownership) {
   }
   return { body: changed ? output : body, changed };
 }
+// Codex collaboration envelopes are visible conversation messages. Only this
+// explicit content schema is portable; private reasoning is handled above.
+export function normalizeExternalMessage(item) {
+  if (!item || typeof item !== 'object') return item;
+  if (!item.type && ['user', 'assistant', 'system', 'developer'].includes(item.role)) return { ...item, type: 'message' };
+  if (item.type !== 'agent_message') return item;
+  if (typeof item.author !== 'string' || !item.author || typeof item.recipient !== 'string' || !item.recipient || !Array.isArray(item.content) || !item.content.length) throw new BoardError('unsupported_agent_message', 'The collaboration message has an unsupported envelope.');
+  const content = item.content.map(part => {
+    if (part?.type === 'input_text' && typeof part.text === 'string') return { type: 'input_text', text: part.text };
+    // This field is the installed Codex collaboration wire's text payload,
+    // not a reasoning item's opaque encrypted continuation.
+    if (part?.type === 'encrypted_content' && typeof part.encrypted_content === 'string') return { type: 'input_text', text: part.encrypted_content };
+    throw new BoardError('unsupported_agent_message', 'The collaboration message has unsupported content.');
+  });
+  return { type: 'message', role: 'user', content: [{ type: 'input_text', text: `Agent message from ${JSON.stringify(item.author)} to ${JSON.stringify(item.recipient)}:\n` }, ...content] };
+}
+function preserveDevinToolFormat(tool) {
+  if (!tool || typeof tool !== 'object') return tool;
+  if (tool.type === 'namespace') {
+    const key = Array.isArray(tool.tools) ? 'tools' : Array.isArray(tool.children) ? 'children' : null;
+    return key ? { ...tool, [key]: tool[key].map(preserveDevinToolFormat) } : tool;
+  }
+  if (tool.type !== 'custom' || tool.format?.type !== 'grammar') return tool;
+  if (typeof tool.format.definition !== 'string' || !tool.format.definition || typeof tool.format.syntax !== 'string') throw new BoardError('invalid_custom_format', 'Custom-tool grammar requires a syntax and definition.');
+  // The pinned Responses converter turns custom tools into string-argument
+  // functions but discards format. Preserve the complete grammar as guidance;
+  // the original tool description and client-side validation stay intact.
+  return { ...tool, description: `${tool.description ?? ''}\nCustom tool input grammar (${tool.format.syntax}):\n${tool.format.definition}` };
+}
 export function prepareExternal(body, route, headers, ownership) {
   let prepared = normalizeHistory(body, route, ownership).body;
   prepared = prepareCodexChildRequest(headers, prepared).body;
   prepared = { ...prepared, model: route.selector };
+  if (route.provider !== 'devin' && Array.isArray(prepared.input)) prepared.input = prepared.input.map(normalizeExternalMessage);
   delete prepared.reasoning_effort;
   // Astra effort is encoded in the exact upstream selector; sending a second
   // independent effort risks disagreement. Other contracts may expose effort.
-  if (route.provider === 'devin') delete prepared.reasoning;
+  if (route.provider === 'devin') {
+    delete prepared.reasoning;
+    if (Array.isArray(prepared.tools)) prepared.tools = prepared.tools.map(preserveDevinToolFormat);
+    if (Array.isArray(prepared.input)) prepared.input = prepared.input.map(item => item?.type === 'tool_search_output' && Array.isArray(item.tools) ? { ...item, tools: item.tools.map(preserveDevinToolFormat) } : item);
+  }
   else if (route.effort) prepared.reasoning = { ...prepared.reasoning, effort: route.effort };
   else delete prepared.reasoning;
-  if (route.provider === 'devin' && /^gpt-6-astra-/.test(route.selector) && prepared.instructions !== undefined) prepared.instructions = ASTRA_INSTRUCTIONS;
+
   const queue = [prepared];
   while (queue.length) {
     const value = queue.pop();
     if (!value || typeof value !== 'object') continue;
     if (value.type === 'input_image' || value.type === 'image_url' || value.type === 'image') {
+      // Check the selector as well as catalog metadata: older applied catalogs
+      // may still advertise images for this subscription route.
+      if (route.provider === 'grok' && route.selector === 'grok-4.5') throw new BoardError('grok_vision_unavailable', 'Grok 4.5 image input is unavailable on this subscription connection: image-reading checks failed. Choose Grok 4.6 for image tasks. No fallback was used.');
       const url = typeof value.image_url === 'object' ? value.image_url?.url : value.image_url ?? value.url;
       if (typeof url === 'string' && !url.startsWith('data:')) throw new BoardError('remote_image_unsupported', 'Remote image fetching is unsupported. Attach an inline image.');
       if (route.images !== true) throw new BoardError('vision_unverified', 'Image input has not been verified for this model. Choose Astra for inline images.');

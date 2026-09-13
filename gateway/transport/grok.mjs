@@ -94,8 +94,9 @@ function qualify(namespace, name) {
   return name.startsWith(prefix) ? name : `${prefix}${name}`;
 }
 
-function normalizeTool(tool, maps, namespace = "") {
+function normalizeTool(tool, maps, namespace = "", loaded = false) {
   if (!tool || typeof tool !== "object" || Array.isArray(tool)) return null;
+  if (maps.searchName && tool.defer_loading === true && !loaded) return null;
   if (tool.type === "namespace") {
     const nested = Array.isArray(tool.tools)
       ? tool.tools
@@ -103,16 +104,29 @@ function normalizeTool(tool, maps, namespace = "") {
         ? tool.children
         : [];
     return nested
-      .map((child) => normalizeTool(child, maps, tool.name || tool.namespace || ""))
+      .map((child) => normalizeTool(child, maps, tool.name || tool.namespace || "", loaded))
       .flat()
       .filter(Boolean);
   }
-  if (tool.type === "tool_search" || tool.type === "image_generation") return null;
+  if (tool.type === 'tool_search' && maps.searchName) {
+    if (tool.execution !== 'client' || tool.parameters?.type !== 'object') throw new InvalidRequestError('Tool search requires a client-executed object schema.');
+    return {type:'function',name:maps.searchName,description:tool.description ?? 'Search for and load tools available to this Codex task.',parameters:tool.parameters};
+  }
+  if (tool.type === "tool_search" || tool.type === "image_generation" || (tool.type === "web_search" && tool.external_web_access === false)) {
+    maps.unavailable.add(tool.type === 'web_search' ? 'cached-only web search' : tool.type);
+    return null;
+  }
 
   const normalized = { ...tool };
+  delete normalized.defer_loading;
+  if (tool.type === 'web_search') delete normalized.external_web_access;
   if (tool.type === "custom") {
-    maps.customNames.add(tool.name);
+    maps.customNames.add(qualify(namespace, tool.name));
     normalized.type = "function";
+    delete normalized.format;
+    if (tool.format?.type === 'grammar' && typeof tool.format.definition === 'string') {
+      normalized.description = `${tool.description ?? ''}\nThe input string must match this ${tool.format.syntax ?? ''} grammar:\n${tool.format.definition}`;
+    }
     normalized.parameters = tool.parameters ?? {
       type: "object",
       properties: { input: { type: "string" } },
@@ -125,14 +139,23 @@ function normalizeTool(tool, maps, namespace = "") {
   }
   if (namespace && normalized.type === "function" && normalized.name) {
     const qualified = qualify(namespace, normalized.name);
+    const previous=maps.namespaces.get(qualified);
+    if (previous && (previous.namespace !== namespace || previous.name !== normalized.name)) throw new InvalidRequestError('Conflicting namespaced tool identities.');
     maps.namespaces.set(qualified, { namespace, name: normalized.name });
     normalized.name = qualified;
   }
+  if (maps.searchName && normalized.name === maps.searchName) throw new InvalidRequestError('A tool conflicts with the reserved search adapter name.');
   return normalized;
 }
 
 function normalizeInputItem(item, maps) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+  if (maps.searchName && ['tool_search_call','tool_search_output'].includes(item.type)) {
+    if (item.execution !== 'client' || typeof item.call_id !== 'string') throw new InvalidRequestError('Tool search history requires client execution and a call ID.');
+    if (item.type === 'tool_search_call') return {type:'function_call',call_id:item.call_id,name:maps.searchName,arguments:JSON.stringify(searchArguments(item.arguments))};
+    if (!Array.isArray(item.tools)) throw new InvalidRequestError('Tool search output requires tool definitions.');
+    return {type:'function_call_output',call_id:item.call_id,output:JSON.stringify(item.tools)};
+  }
   if (item.type === "custom_tool_call") {
     const name = qualify(item.namespace, item.name);
     if (item.namespace && name) {
@@ -171,16 +194,23 @@ function normalizeInputItem(item, maps) {
 }
 
 export function prepareGrokResponsesRequest(body) {
-  const maps = { customNames: new Set(), namespaces: new Map() };
+  const maps = { customNames: new Set(), namespaces: new Map(), unavailable: new Set() };
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { body, maps };
   }
 
+  const sourceInput = Array.isArray(body.input) ? body.input : [];
+  const declarations = [...(Array.isArray(body.tools) ? body.tools : []), ...sourceInput.filter(i=>i?.type==='additional_tools').flatMap(i=>i.tools??[])];
+  if (body.model === 'grok-4.6' && (declarations.some(t=>t?.type==='tool_search') || sourceInput.some(i=>i?.type==='tool_search_call'))) maps.searchName='switchboard_tool_search';
   const input = [];
   const promotedTools = [];
+  const loadedTools = [];
   for (const item of Array.isArray(body.input) ? body.input : []) {
     if (item?.type === "additional_tools" && Array.isArray(item.tools)) {
       promotedTools.push(...item.tools);
+    } else if (maps.searchName && item?.type === 'tool_search_output') {
+      input.push(normalizeInputItem(item,maps));
+      loadedTools.push(...item.tools);
     } else if (item?.type === "reasoning") {
       // Reasoning and compaction state is encrypted by the originating
       // provider. It is not portable across Responses implementations, so
@@ -197,18 +227,39 @@ export function prepareGrokResponsesRequest(body) {
   const tools = originalTools
     .flatMap((tool) => normalizeTool(tool, maps) ?? [])
     .filter(Boolean);
+  tools.push(...loadedTools.flatMap(tool=>normalizeTool(tool,maps,'',true)??[]));
+  const uniqueTools = new Map();
+  for (const tool of tools) {
+    const key=JSON.stringify([tool.type,tool.name]);
+    if (uniqueTools.has(key) && JSON.stringify(uniqueTools.get(key))!==JSON.stringify(tool)) throw new InvalidRequestError('Conflicting definitions for a loaded tool.');
+    uniqueTools.set(key,tool);
+  }
 
   const prepared = {
     ...body,
     stream: true,
     ...(Array.isArray(body.input) ? { input } : {}),
   };
+  if (body.tool_choice && typeof body.tool_choice === 'object' && ['function', 'custom'].includes(body.tool_choice.type)) {
+    prepared.tool_choice = {type:'function', name:qualify(body.tool_choice.namespace, body.tool_choice.name)};
+  }
+  if (body.tool_choice?.type === 'tool_search' && maps.searchName) {
+    if (!tools.some(tool=>tool.name===maps.searchName)) throw new InvalidRequestError('The selected tool search is not registered in this request.');
+    prepared.tool_choice={type:'function',name:maps.searchName};
+  }
+  if (maps.unavailable.size) {
+    // Cached-only must never become live search. Explain the unavailable
+    // provider built-ins in the model's instructions while retaining coding
+    // tools and already supplied MCP definitions.
+    prepared.instructions = `${prepared.instructions ?? ''}\nProvider capability notice: ${[...maps.unavailable].join(', ')} unavailable on this subscription transport. Do not claim to use them. Cached-only search does not authorize live web access.`;
+    if (body.tool_choice && typeof body.tool_choice === 'object' && !tools.some(tool => tool.type === prepared.tool_choice.type && (!prepared.tool_choice.name || tool.name === prepared.tool_choice.name))) throw new InvalidRequestError('The explicitly selected tool is unavailable on this subscription transport.');
+  }
   delete prepared.previous_response_id;
   delete prepared.prompt_cache_retention;
   delete prepared.safety_identifier;
   delete prepared.stream_options;
-  if (originalTools.length > 0) {
-    if (tools.length > 0) prepared.tools = tools;
+  if (originalTools.length > 0 || loadedTools.length > 0) {
+    if (tools.length > 0) prepared.tools = [...uniqueTools.values()];
     else delete prepared.tools;
   }
   if (!prepared.tools?.length) {
@@ -218,15 +269,39 @@ export function prepareGrokResponsesRequest(body) {
   return { body: prepared, maps };
 }
 
+// Preserve JSON strings and large integer lexemes exactly. Codex integer fields
+// reject 15.0 even though it has the same mathematical value as 15.
+export function normalizeIntegralArguments(value) {
+  if (typeof value !== "string") return value;
+  try { JSON.parse(value); } catch { return value; }
+  return value.replace(/"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g, token => {
+    if (!/^-?\d+\.0+$/.test(token)) return token;
+    const number = Number(token);
+    return Number.isSafeInteger(number) ? token.slice(0, token.indexOf('.')) : token;
+  });
+}
+
+function searchArguments(value) {
+  let parsed=value;
+  if (typeof value === 'string') { try { parsed=JSON.parse(value || '{}'); } catch { throw new InvalidRequestError('Tool search returned invalid JSON arguments.'); } }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new InvalidRequestError('Tool search arguments must be an object.');
+  return parsed;
+}
+
 function restoreToolItem(item, maps) {
   if (!item || typeof item !== "object" || item.type !== "function_call") {
     return item;
+  }
+  if (maps.searchName && item.name === maps.searchName) {
+    const restored={...item,type:'tool_search_call',execution:'client',arguments:searchArguments(item.arguments ?? '{}')};
+    delete restored.name;delete restored.namespace;
+    return restored;
   }
   const namespace = maps.namespaces.get(item.name);
   const base = namespace
     ? { ...item, name: namespace.name, namespace: namespace.namespace }
     : item;
-  if (!maps.customNames.has(base.name)) return base;
+  if (!maps.customNames.has(item.name)) return { ...base, ...(base.arguments !== undefined ? { arguments: normalizeIntegralArguments(base.arguments) } : {}) };
   const restored = {
     ...base,
     type: "custom_tool_call",
@@ -246,13 +321,11 @@ export function restoreGrokResponsesEvent(event, maps) {
       output: restored.response.output.map((item) => restoreToolItem(item, maps)),
     };
   }
-  const itemName = restored.item?.name;
-  const isCustom =
-    restored.item?.type === "custom_tool_call" ||
-    (itemName && maps.customNames.has(itemName));
+  const isCustom = restored.item?.type === "custom_tool_call";
   if (isCustom) {
     if (restored.type === "response.function_call_arguments.delta") {
       restored.type = "response.custom_tool_call_input.delta";
+      restored.delta = customInput(restored.delta);
     } else if (restored.type === "response.function_call_arguments.done") {
       restored.type = "response.custom_tool_call_input.done";
       restored.input = customInput(restored.arguments);
@@ -262,62 +335,55 @@ export function restoreGrokResponsesEvent(event, maps) {
   return restored;
 }
 
-function createSSETransform(maps) {
+export function createSSETransform(maps) {
   let pending = "";
   const decoder = new StringDecoder("utf8");
-  const customItemIDs = new Set();
+  const customIDs = new Set();
+  const searchIDs = new Set();
+  const emitted = new Set();
+  function record(value) {
+    const lines = value.split(/\r?\n/);
+    const data = lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trim()).join('\n');
+    if (!data || data === '[DONE]') return `${value}\n\n`;
+    let event;
+    try { event = JSON.parse(data); } catch { throw new Error('Invalid upstream SSE JSON'); }
+    const restored = restoreGrokResponsesEvent(event, maps);
+    const id = event.item_id ?? event.item?.id ?? event.item?.call_id;
+    if (restored.item?.type === 'tool_search_call') searchIDs.add(id);
+    if (searchIDs.has(id) && ['response.function_call_arguments.delta','response.function_call_arguments.done'].includes(event.type)) return '';
+    if (restored.item?.type === 'custom_tool_call') customIDs.add(id);
+    // Custom arguments are JSON on xAI's wire. Emit their decoded input once
+    // complete, never JSON fragments disguised as raw patch/code deltas.
+    if (customIDs.has(id)) {
+      if (event.type === 'response.function_call_arguments.delta') return '';
+      if (event.type === 'response.function_call_arguments.done') {
+        const input = customInput(event.arguments);
+        restored.type = 'response.custom_tool_call_input.done';
+        restored.input = input; delete restored.arguments;
+        const delta = emitted.has(id) ? '' : `data: ${JSON.stringify({ type: 'response.custom_tool_call_input.delta', item_id: id, output_index: event.output_index, delta: input })}\n\n`;
+        emitted.add(id);
+        return delta + `data: ${JSON.stringify(restored)}\n\n`;
+      }
+    }
+    if (restored.type === 'response.function_call_arguments.done') restored.arguments = normalizeIntegralArguments(restored.arguments);
+    return `data: ${JSON.stringify(restored)}\n\n`;
+  }
   return new Transform({
     transform(chunk, _encoding, callback) {
-      pending += decoder.write(chunk);
-      const records = pending.split(/\r?\n\r?\n/);
-      pending = records.pop() ?? "";
-      for (const record of records) {
-        this.push(transformSSERecord(record, maps, customItemIDs));
-      }
-      callback();
+      try {
+        pending += decoder.write(chunk);
+        if (Buffer.byteLength(pending) > MAX_BODY_BYTES) throw new Error('Upstream SSE record exceeded the bridge limit');
+        const records = pending.split(/\r?\n\r?\n/);
+        pending = records.pop() ?? '';
+        for (const value of records) this.push(record(value));
+        callback();
+      } catch (error) { callback(error); }
     },
     flush(callback) {
-      pending += decoder.end();
-      if (pending) this.push(transformSSERecord(pending, maps, customItemIDs));
-      callback();
+      try { pending += decoder.end(); if (pending) this.push(record(pending)); callback(); }
+      catch (error) { callback(error); }
     },
   });
-}
-
-function transformSSERecord(record, maps, customItemIDs) {
-  const lines = record.split(/\r?\n/);
-  const transformed = lines.map((line) => {
-    if (!line.startsWith("data:")) return line;
-    const value = line.slice(5).trim();
-    if (!value || value === "[DONE]") return line;
-    try {
-      const restored = restoreGrokResponsesEvent(JSON.parse(value), maps);
-      if (
-        restored.type === "response.output_item.added" &&
-        restored.item?.type === "custom_tool_call" &&
-        (restored.item.id || restored.item.call_id)
-      ) {
-        customItemIDs.add(restored.item.id ?? restored.item.call_id);
-      }
-      if (
-        customItemIDs.has(restored.item_id) &&
-        restored.type === "response.function_call_arguments.delta"
-      ) {
-        restored.type = "response.custom_tool_call_input.delta";
-      } else if (
-        customItemIDs.has(restored.item_id) &&
-        restored.type === "response.function_call_arguments.done"
-      ) {
-        restored.type = "response.custom_tool_call_input.done";
-        restored.input = customInput(restored.arguments);
-        delete restored.arguments;
-      }
-      return `data: ${JSON.stringify(restored)}`;
-    } catch {
-      return line;
-    }
-  });
-  return `${transformed.join("\n")}\n\n`;
 }
 
 function forwardedUpstreamHeaders(headers) {
@@ -464,7 +530,7 @@ export function createGrokTransport({
         prepared=prepareGrokResponsesRequest(parsed);
         payload=Buffer.from(JSON.stringify(prepared.body));sessionID=promptCacheSessionID(parsed);
         if(payload.length>MAX_BODY_BYTES)throw new Error();
-      } catch {sendJson(response,400,{error:{type:"invalid_request",message:"The request could not be processed."}});return;}
+      } catch (error) {sendJson(response,400,{error:{type:"invalid_request",message:error instanceof InvalidRequestError ? error.message : "The request could not be processed."}});return;}
       let activeUpstream=null,retried=false;
       const fail=()=>{if(!response.destroyed&&!response.writableEnded)sendJson(response,502,{error:{type:"upstream_unavailable",message:"The xAI subscription transport is unavailable."}});};
       const send=()=>{

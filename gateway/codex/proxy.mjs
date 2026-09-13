@@ -6,6 +6,7 @@ import * as zlib from 'node:zlib';
 import { BoardError, safeError } from '../core/errors.mjs';
 import { resolveRoute } from '../core/routes.mjs';
 import { HistoryOwnership, normalizeHistory, prepareExternal } from './compatibility.mjs';
+import { prepareDevinSearch, createDevinSearchTransform } from './deferred-search.mjs';
 
 export const MAX_BODY = 10 * 1024 * 1024;
 export const SENTINEL = 'codex-switchboard-local-only';
@@ -144,7 +145,7 @@ export function createProxy({ getRegistry, getWorker, onRoute = () => {}, isNati
   const origins = nativeOrigins ?? { chatgpt:'https://chatgpt.com/backend-api/codex', openai:'https://api.openai.com/v1' };
   const active = new Map();
   const server = createServer(async (request, response) => {
-    let route, upstream;
+    let route, upstream, devinSearch = false;
     const status = { startedAt: Date.now(), result: 'routing' };
     try {
       if (request.socket.remoteAddress !== '127.0.0.1' || request.headers.origin != null || request.headers['sec-fetch-site'] != null || !/^(?:127\.0\.0\.1|localhost)(?::\d{1,5})?$/.test(request.headers.host ?? '')) throw new BoardError('forbidden_origin', 'Only local Codex clients may use this gateway.', 403);
@@ -169,10 +170,14 @@ export function createProxy({ getRegistry, getWorker, onRoute = () => {}, isNati
         target = new URL((request.headers['chatgpt-account-id'] ? origins.chatgpt : origins.openai) + endpoint.path + endpoint.query);
       } else {
         if (endpoint.path !== '/responses' || request.method !== 'POST') throw new BoardError('external_endpoint_unsupported', 'This external endpoint, including compaction, is unsupported. Start a new task for this provider.', 400);
+        let prepared = prepareExternal(body, route, request.headers, ownership);
+        if (route.provider === 'devin') {
+          const search = prepareDevinSearch(prepared); prepared = search.body; devinSearch = search.active;
+        }
+        payload = Buffer.from(JSON.stringify(prepared));
+        if (payload.length > MAX_BODY) throw new BoardError('request_too_large', 'The normalized request exceeds 10 MiB.', 413);
         const worker = await getWorker(route.provider, route.selector);
         if (!worker?.port) throw new BoardError('provider_unavailable', 'The selected provider is not connected. No other provider was used.', 503);
-        payload = Buffer.from(JSON.stringify(prepareExternal(body, route, request.headers, ownership)));
-        if (payload.length > MAX_BODY) throw new BoardError('request_too_large', 'The normalized request exceeds 10 MiB.', 413);
         target = new URL(`http://127.0.0.1:${worker.port}/v1/responses`);
         headers = externalHeaders(request.headers, worker.capability, payload.length);
       }
@@ -188,10 +193,15 @@ export function createProxy({ getRegistry, getWorker, onRoute = () => {}, isNati
           json(response, incoming.statusCode ?? 502, { error:{ code, message: route.reviewer ? 'Native approval review failed. Sign in to Codex or choose manual approval in Codex.' : 'The selected provider rejected this request. No fallback was used.' } });
           return;
         }
-        response.writeHead(incoming.statusCode ?? 200, responseHeaders(incoming.headers));
         const isSSE = String(incoming.headers['content-type'] ?? '').includes('text/event-stream');
         const isJSON=String(incoming.headers['content-type']??'').includes('application/json');
-        const streams = !incoming.headers['content-encoding'] && (isSSE||isJSON) ? [incoming, isSSE?observer(route.provider,ownership,status):jsonOwnershipObserver(route.provider,ownership), response] : [incoming, response];
+        const outgoingHeaders=responseHeaders(incoming.headers);
+        if (devinSearch) {
+          if (incoming.headers['content-encoding'] || (!isSSE && !isJSON)) {incoming.resume();json(response,502,{error:{code:'invalid_tool_search',message:'Unsupported tool search response encoding.'}});return;}
+          delete outgoingHeaders['content-length'];
+        }
+        response.writeHead(incoming.statusCode ?? 200, outgoingHeaders);
+        const streams = !incoming.headers['content-encoding'] && (isSSE||isJSON) ? [incoming, ...(devinSearch?[createDevinSearchTransform(isSSE)]:[]), isSSE?observer(route.provider,ownership,status):jsonOwnershipObserver(route.provider,ownership), response] : [incoming, response];
         pipeline(...streams, error => {
           if (error) status.result = response.destroyed ? 'cancelled' : 'stream_error';
           else if (status.result === 'running') status.result = isSSE ? 'stream_ended' : 'completed';

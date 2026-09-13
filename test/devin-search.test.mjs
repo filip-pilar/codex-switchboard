@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {prepareDevinSearch,createDevinSearchTransform} from '../gateway/codex/deferred-search.mjs';
+const search={type:'tool_search',execution:'client',parameters:{type:'object',properties:{query:{type:'string'},limit:{type:'number'}},required:['query'],additionalProperties:false}};
+const loaded={type:'namespace',name:'lab',tools:[{type:'function',name:'beacon',parameters:{type:'object'},defer_loading:true}]};
+test('Devin deferred search preserves client schema, loaded namespaces and call identity',()=>{
+ const source={tools:[search,loaded],tool_choice:{type:'tool_search'},input:[]};
+ const first=prepareDevinSearch(source).body;
+ assert.equal(first.tools.length,1);assert.deepEqual(first.tools[0].parameters,search.parameters);
+ assert.equal(first.tool_choice.name,'switchboard_tool_search');
+ const next=prepareDevinSearch({...source,input:[{type:'tool_search_call',execution:'client',call_id:'c',arguments:{query:'beacon',limit:1}},{type:'tool_search_output',execution:'client',call_id:'c',tools:[loaded]}]}).body;
+ assert.equal(next.tools[1].name,'lab');assert.equal(next.tools[1].tools[0].defer_loading,undefined);
+ assert.equal(next.input[0].call_id,'c');assert.equal(next.input[1].call_id,'c');assert.equal(next.input[1].type,'function_call_output');
+ assert.equal(source.tools[1].tools[0].defer_loading,true);
+ assert.throws(()=>prepareDevinSearch({tools:[{...search,execution:'server'}]}),/client-executed/);
+ assert.throws(()=>prepareDevinSearch({tools:[search,{type:'function',name:'switchboard_tool_search'}]}),/conflicts/);
+ assert.throws(()=>prepareDevinSearch({tools:[search],input:[{type:'tool_search_call',execution:'client',call_id:'x',arguments:'['}]}),/valid JSON/);
+});
+test('Devin search stream restores complete native calls across byte boundaries',async()=>{
+ const call={id:'i',type:'function_call',call_id:'c',name:'switchboard_tool_search',arguments:'{"query":"café"}'};
+ const events=[{type:'response.output_item.added',item:{...call,arguments:''}},{type:'response.function_call_arguments.delta',item_id:'i',delta:'{"query":'},{type:'response.function_call_arguments.done',item_id:'i',arguments:call.arguments},{type:'response.output_item.done',item:call},{type:'response.completed',response:{output:[call]}}];
+ const t=createDevinSearchTransform(true),chunks=[];const read=(async()=>{for await(const c of t)chunks.push(c);})();
+ const bytes=Buffer.from(events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join(''));
+ for(let i=0;i<bytes.length;i+=3)t.write(bytes.subarray(i,i+3));t.end();await read;
+ const output=Buffer.concat(chunks).toString().trim().split('\n\n').map(x=>JSON.parse(x.slice(6)));
+ assert.equal(output.length,3);assert.equal(output[1].item.type,'tool_search_call');assert.deepEqual(output[1].item.arguments,{query:'café'});assert.equal(output[1].item.call_id,'c');
+ assert.deepEqual(output[2].response.output[0],output[1].item);
+ const json=createDevinSearchTransform(false),result=[];const readJSON=(async()=>{for await(const c of json)result.push(c);})();json.end(JSON.stringify({output:[call]}));await readJSON;
+ assert.equal(JSON.parse(Buffer.concat(result)).output[0].execution,'client');
+});
