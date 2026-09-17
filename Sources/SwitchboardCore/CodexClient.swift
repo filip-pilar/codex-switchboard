@@ -148,8 +148,6 @@ private final class LinePump: @unchecked Sendable {
 
 private final class StderrDrain: @unchecked Sendable {
     private let lock = NSLock()
-    private var tail = Data()
-    private let maximumBytes = 4_096
 
     private var isFinished = false
     private var waiters: [CheckedContinuation<String, Never>] = []
@@ -188,12 +186,7 @@ private final class StderrDrain: @unchecked Sendable {
                 self.finish()
                 return
             }
-            self.lock.lock()
             // Discard raw stderr; it is not diagnostic output.
-            if self.tail.count > self.maximumBytes {
-                self.tail.removeFirst(self.tail.count - self.maximumBytes)
-            }
-            self.lock.unlock()
         }
     }
 }
@@ -419,7 +412,7 @@ public struct CodexExecutableLocator: Sendable {
 }
 
 public protocol AccountClient: CodexIdentityReading {
-    func readWeeklyUsage(profileHome: URL) async throws -> WeeklyUsage
+    func readUsageWindows(profileHome: URL) async throws -> [RateLimitWindow]
     func login(profileHome: URL) async throws -> AccountIdentity
 }
 
@@ -471,17 +464,6 @@ public struct CodexClient: AccountClient {
             try await session.request(method: "account/rateLimits/read", id: 1, timeout: requestTimeout)
         }
         return parseWindows(result)
-    }
-
-    public func readWeeklyUsage(profileHome: URL) async throws -> WeeklyUsage {
-        let result = try await withSession(profileHome: profileHome) { session in
-            try await session.request(
-                method: "account/rateLimits/read",
-                id: 1,
-                timeout: requestTimeout
-            )
-        }
-        return try WeeklyUsageNormalizer.normalize(parseWindows(result))
     }
 
     public func login(profileHome: URL) async throws -> AccountIdentity {

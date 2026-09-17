@@ -14,7 +14,6 @@ final class AppModel: ObservableObject {
     @Published var activeAccountID: UUID?
     @Published var identityVerified = false
     @Published var usageWindows: [RateLimitWindow] = []
-    @Published var usageFetchedAt: Date?
     @Published var usageStale = true
     @Published var tab = "Models"
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -242,7 +241,7 @@ final class AppModel: ObservableObject {
                 guard identity.matches(profile) else { self.identityVerified = false; throw SafeFailure(code: "active_identity_changed", message: "Codex's active identity changed outside Switchboard. Import Current Login before switching.") }
                 self.identityVerified = true
                 self.usageWindows = try await self.codex().readUsageWindows(profileHome: home)
-                self.usageFetchedAt = Date(); self.usageStale = false
+                self.usageStale = false
             } catch { self.usageStale = true; throw error }
         }
     }

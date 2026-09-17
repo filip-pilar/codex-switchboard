@@ -42,6 +42,16 @@ struct SecureAccountTests {
         try await service.switchAccount(to: target.id)
         #expect(try await store.loadRegistry().activeAccountID == target.id)
         #expect(try String(data: SecureFiles.read(active.appending(path: "auth.json")), encoding: .utf8) == "target")
+        let obsoleteCache = data.appending(path: "usage-cache.json")
+        try SecureFiles.write(Data("malformed old cache".utf8), to: obsoleteCache)
+        try await store.removeAccount(id: original.id)
+        #expect(try await store.loadRegistry().accounts.map(\.id) == [target.id])
+        let removedHome = await store.profileHome(id: original.id)
+        #expect(!FileManager.default.fileExists(atPath: removedHome.path))
+        #expect(try SecureFiles.read(obsoleteCache) == Data("malformed old cache".utf8))
+        await #expect(throws: AccountStoreError.cannotRemoveActiveAccount) {
+            try await store.removeAccount(id: target.id)
+        }
     }
 }
 private struct NoDesktop: DesktopControlling {

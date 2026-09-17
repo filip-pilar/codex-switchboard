@@ -18,7 +18,6 @@ public actor AccountStore: AccountStoring {
 
     private let fileManager: FileManager
     private var registry: AccountRegistry?
-    private var usageCache: UsageCache?
 
     public init(
         baseURL: URL? = nil,
@@ -44,7 +43,6 @@ public actor AccountStore: AccountStoring {
     }
 
     private var accountsURL: URL { baseURL.appending(path: "accounts.json") }
-    private var usageCacheURL: URL { baseURL.appending(path: "usage-cache.json") }
     private var profilesURL: URL { baseURL.appending(path: "accounts", directoryHint: .isDirectory) }
 
     public func loadRegistry() throws -> AccountRegistry {
@@ -56,18 +54,6 @@ public actor AccountStore: AccountStoring {
         }
         let loaded = try Self.decoder.decode(AccountRegistry.self, from: readChecked(accountsURL))
         registry = loaded
-        return loaded
-    }
-
-    public func loadUsageCache() throws -> UsageCache {
-        try prepareDirectories()
-        if let usageCache { return usageCache }
-        guard fileManager.fileExists(atPath: usageCacheURL.path) else {
-            usageCache = .empty
-            return .empty
-        }
-        let loaded = try Self.decoder.decode(UsageCache.self, from: readChecked(usageCacheURL))
-        usageCache = loaded
         return loaded
     }
 
@@ -154,11 +140,6 @@ public actor AccountStore: AccountStoring {
         guard current.accounts.contains(where: { $0.id == id }) else {
             throw AccountStoreError.profileNotFound
         }
-        var cache = try loadUsageCache()
-        if cache.entries.contains(where: { $0.profileID == id }) {
-            cache.entries.removeAll(where: { $0.profileID == id })
-            try saveUsageCache(cache)
-        }
         let original = current
         current.accounts.removeAll(where: { $0.id == id })
         try saveRegistry(current)
@@ -232,11 +213,6 @@ public actor AccountStore: AccountStoring {
     private func saveRegistry(_ value: AccountRegistry) throws {
         try writeJSON(value, to: accountsURL)
         registry = value
-    }
-
-    private func saveUsageCache(_ value: UsageCache) throws {
-        try writeJSON(value, to: usageCacheURL)
-        usageCache = value
     }
 
     private func prepareDirectories() throws {

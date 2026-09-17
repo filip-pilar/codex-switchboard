@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { callerToolName, findCallerTool, isCallerTool } from '../gateway/transport/acp/tool-names.mjs';
+import { callerToolName, findCallerTool } from '../gateway/transport/acp/tool-names.mjs';
 
 test('keeps equal leaf names in different namespaces distinct', () => {
   const a = { name: 'read', namespace: 'mcp__alpha' };
@@ -18,18 +18,6 @@ test('rejects a qualified name collision instead of dispatching the first match'
     {name:'read', namespace:'mcp__alpha'}, {name:'mcp__alpha__read'},
   ], 'mcp__alpha__read'), /ambiguous_caller_tool/);
 });
-
-
-test('permission lookup denies unknown, non-function and ambiguous aliases', () => {
-  const a = {type:'function', name:'read', namespace:'mcp__alpha'};
-  const b = {type:'function', name:'read', namespace:'mcp__beta'};
-  assert.equal(isCallerTool([a], 'read'), true);
-  assert.equal(isCallerTool([a,b], 'read'), false);
-  assert.equal(isCallerTool([a,b], 'mcp__alpha__read'), true);
-  assert.equal(isCallerTool([a], 'unknown'), false);
-  assert.equal(isCallerTool([{type:'custom',name:'patch'}], 'patch'), false);
-});
-
 
 test('normalizes one redundant relay prefix only for a loaded tool', () => {
   const a={type:'function',name:'read',namespace:'mcp__alpha'};

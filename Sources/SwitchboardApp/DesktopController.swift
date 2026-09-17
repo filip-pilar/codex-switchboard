@@ -5,7 +5,6 @@ import SwitchboardCore
 final class DesktopController: DesktopControlling, @unchecked Sendable {
     private let lock = NSLock()
     private var lastApplication: URL?
-    static let identifiers = ["com.openai.codex", "com.openai.chat"]
     static func applicationURL() -> URL? {
         let running = NSWorkspace.shared.runningApplications.first { application in
             guard let url = application.bundleURL else { return false }

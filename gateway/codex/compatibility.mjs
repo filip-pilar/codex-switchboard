@@ -1,5 +1,4 @@
 import { BoardError } from '../core/errors.mjs';
-import { ASTRA_INSTRUCTIONS } from '../core/registry.mjs';
 import { prepareCodexChildRequest } from '../http/codex-child-compat.mjs';
 
 // Bounded, in-memory ownership only. No transcript or image is retained.

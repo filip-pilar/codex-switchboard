@@ -35,41 +35,16 @@ public struct AccountRegistry: Codable, Equatable, Sendable {
     public static let empty = AccountRegistry(activeAccountID: nil, accounts: [])
 }
 
-public struct WeeklyUsage: Codable, Equatable, Sendable {
-    public let remainingPercent: Int
-    public let resetsAt: Date
-    public let fiveHourRemainingPercent: Int?
-    public let fiveHourResetsAt: Date?
+public struct RateLimitWindow: Codable, Equatable, Sendable {
+    public let usedPercent: Double
+    public let windowDurationMins: Int
+    public let resetsAt: TimeInterval
 
-    public init(
-        remainingPercent: Int,
-        resetsAt: Date,
-        fiveHourRemainingPercent: Int? = nil,
-        fiveHourResetsAt: Date? = nil
-    ) {
-        self.remainingPercent = remainingPercent
+    public init(usedPercent: Double, windowDurationMins: Int, resetsAt: TimeInterval) {
+        self.usedPercent = usedPercent
+        self.windowDurationMins = windowDurationMins
         self.resetsAt = resetsAt
-        self.fiveHourRemainingPercent = fiveHourRemainingPercent
-        self.fiveHourResetsAt = fiveHourResetsAt
     }
-}
-
-public struct UsageCacheEntry: Codable, Equatable, Sendable {
-    public let profileID: UUID
-    public let usage: WeeklyUsage
-    public let fetchedAt: Date
-
-    public init(profileID: UUID, usage: WeeklyUsage, fetchedAt: Date) {
-        self.profileID = profileID; self.usage = usage; self.fetchedAt = fetchedAt
-    }
-}
-
-public struct UsageCache: Codable, Equatable, Sendable {
-    public var entries: [UsageCacheEntry]
-
-    public init(entries: [UsageCacheEntry]) { self.entries = entries }
-
-    public static let empty = UsageCache(entries: [])
 }
 
 public struct AccountIdentity: Equatable, Sendable {
@@ -170,7 +145,6 @@ public enum CodexClientError: LocalizedError, Equatable, Sendable {
     case connectionClosedWithDetails(String)
     case timeout
     case identityUnavailable
-    case weeklyUsageUnavailable
     case loginFailed(String)
 
     public var errorDescription: String? {
@@ -191,8 +165,6 @@ public enum CodexClientError: LocalizedError, Equatable, Sendable {
             "Codex app-server did not respond before the timeout."
         case .identityUnavailable:
             "Codex did not return an account identity."
-        case .weeklyUsageUnavailable:
-            "No weekly Codex Usage window is available."
         case let .loginFailed(message):
             "Codex login failed: \(message)"
         }
