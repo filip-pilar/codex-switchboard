@@ -16,6 +16,6 @@ Build/install commands are in [README](../README.md); component ownership is in 
 
 The Swift wrappers' `--disable-sandbox` flag applies to SwiftPM build subprocesses, not Codex permissions. Preserve the host's approval/sandbox policy.
 
-Optional [live acceptance](../experiments/acp/README.md) requires current authorization and existing provider sign-in. [Compatibility validation](compatibility-validation.md) records evidence and remaining acceptance; historical authorization is not permission for another run. Activation and recovery are covered in [setup and recovery](setup-recovery.md).
+Optional [live acceptance](../experiments/acp/README.md) requires current authorization and existing provider sign-in. [Compatibility validation](compatibility-validation.md) records evidence and remaining acceptance; authorization applies only to the current session. Activation and recovery are covered in [setup and recovery](setup-recovery.md).
 
-The helper is compiled with Bun and depends on `smol-toml`. Provider CLIs are external. Generated files under `.build/` and `dist/` are disposable; edit their source instead. Reused-source revisions and notices are in [source provenance](source-provenance.md).
+The helper is compiled with Bun and depends on `smol-toml`. Provider CLIs are external. Generated files under `.build/` and `dist/` are disposable; edit their source instead. Applicable licenses are in [third-party notices](../THIRD_PARTY_NOTICES.md).

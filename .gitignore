@@ -7,4 +7,4 @@ node_modules/
 *.log
 coverage/
 .codex/
-references/extracted/
+references/
