@@ -46,14 +46,14 @@ See the [compatibility matrix](docs/compatibility-validation.md) for exact selec
 
 ## Use
 
-1. Open the app, then **Manage → Connections**. Import/refresh an existing official CLI session or use **Connect** for browser sign-in. Add/import native accounts in **Accounts**.
-2. In **Models**, choose **Show in Codex** for compatible discoveries. Astra is enabled initially; other discoveries, including Grok 4.6, need enabling.
-3. In **Setup**, review any existing integration, choose explicit migration if needed, and **Apply and Restart Codex…**. Choose **Apply, Restart Later** while active tasks are still running.
+1. Open the app, then **Settings → Connections**. Import/refresh an existing official CLI session or use **Sign In…** for browser sign-in. Add/import native accounts in **Accounts**.
+2. In **Models**, choose the model switches for compatible discoveries. Astra is enabled initially; other discoveries, including Grok 4.6, need enabling.
+3. In **Setup**, review any existing integration, choose explicit migration if needed, and **Enable in Codex…**. Choose **Apply, Restart Later** while active tasks are still running.
 4. After restarting Codex, choose **Switchboard selection** in its actual picker to follow the menu. **Astra · Devin** and the enabled Grok 4.6 entry keep direct routing; native entries remain native.
-5. Use **Restore Integration…** in Setup to return owned settings. Resolve specific conflicts, then restart Codex.
+5. Use **Restore Previous Setup…** in Setup to return owned settings. Resolve specific conflicts, then restart Codex.
 
 The gateway uses `127.0.0.1:9477`. It never takes over an unknown listener, rotates accounts, changes sandbox/approval policy, or falls back to a different provider. External compaction and unsafe private continuation require a new task. Grok 4.6 supports inline images and selectable reasoning.
 
-For installation and troubleshooting, see [setup and recovery](docs/setup-recovery.md). For contributions, see [AGENTS.md](AGENTS.md), [development checks](docs/development-workflow.md), [architecture](docs/architecture.md). Bug reports should include the app/CLI versions and **Copy Safe Diagnostics**, never credential files or raw request logs.
+For installation and troubleshooting, see [setup and recovery](docs/setup-recovery.md). For contributions, see [AGENTS.md](AGENTS.md), [development checks](docs/development-workflow.md), [architecture](docs/architecture.md). Bug reports should include the app/CLI versions and **Copy Diagnostics**, never credential files or raw request logs.
 
 Licensed under [MIT](LICENSE). Reused-source and bundled-runtime notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This is an independent project, not an official OpenAI, Cognition, or xAI app.

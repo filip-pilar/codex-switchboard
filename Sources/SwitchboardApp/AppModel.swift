@@ -74,10 +74,10 @@ final class AppModel: ObservableObject {
     func showManage(_ selectedTab: String? = nil) {
         if let selectedTab { tab = selectedTab }
         if window == nil {
-            let newWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 850, height: 650), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            let newWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 620), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             newWindow.title = "Codex Switchboard"
             newWindow.contentView = NSHostingView(rootView: ManagementView(model: self))
-            newWindow.minSize = NSSize(width: 720, height: 520)
+            newWindow.minSize = NSSize(width: 760, height: 540)
             newWindow.isReleasedWhenClosed = false; newWindow.center(); window = newWindow
         }
         NSApp.activate(ignoringOtherApps: true); window?.makeKeyAndOrderFront(nil)
@@ -274,7 +274,7 @@ final class AppModel: ObservableObject {
             let object = try JSONSerialization.jsonObject(with: data)
             let pretty = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
             NSPasteboard.general.clearContents(); NSPasteboard.general.setString(String(decoding: pretty, as: UTF8.self), forType: .string)
-            self.feedback = "Safe diagnostics copied. They contain readiness, versions, and route metadata only."
+            self.feedback = "Diagnostics copied."
         }
     }
     func setLaunchAtLogin(_ enabled: Bool) {

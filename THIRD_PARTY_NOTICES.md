@@ -131,3 +131,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## Bun 1.4.2 runtime (744846f84)
 
 The helper embeds the Bun runtime. The exact upstream notice, linked-library inventory, and JavaScriptCore relinking instructions are reproduced in `licenses/Bun-LICENSE.md`, shipped in the app bundle. Source: https://github.com/oven-sh/bun/tree/744846f84 . This repository contains the helper source and build scripts; rebuild it with a modified Bun to replace or relink the runtime. No official provider CLI executable is redistributed.
+
+## LobeHub icon artwork
+
+The OpenAI knot in `Resources/StatusIconTemplate.svg` is adapted from `@lobehub/icons-static-svg` 1.95.0 (`icons/openai.svg`). The switch badge is original to Switchboard. MIT license, Copyright (c) 2023 LobeHub; see `licenses/LobeHub-icons-LICENSE`. Source: https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg . Brand marks belong to their respective owners; Switchboard is independent.

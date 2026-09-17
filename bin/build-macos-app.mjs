@@ -84,6 +84,9 @@ copyFileSync(
   join(macos, "SwitchboardApp"),
 );
 copyFileSync(helper, join(resources, "switchboard-helper"));
+for (const name of ["StatusIconTemplate.png", "StatusIconTemplate@2x.png"]) {
+  copyFileSync(join(root, "Resources", name), join(resources, name));
+}
 copyFileSync(authDriver, join(resources, "devin-auth-pty"));
 copyFileSync(join(packageRoot, "Info.plist"), join(contents, "Info.plist"));
 copyFileSync(join(root, "THIRD_PARTY_NOTICES.md"), join(resources, "THIRD_PARTY_NOTICES.md"));
