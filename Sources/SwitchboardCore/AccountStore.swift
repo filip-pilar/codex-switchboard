@@ -1,10 +1,4 @@
 import Foundation
-#if canImport(Darwin)
-import Darwin
-#endif
-#if os(Windows)
-import SwitcherPlatform
-#endif
 
 public protocol AccountStoring: Sendable {
     func loadRegistry() async throws -> AccountRegistry
@@ -23,35 +17,26 @@ public actor AccountStore: AccountStoring {
     public let activeHomeURL: URL
 
     private let fileManager: FileManager
-    private let legacyBaseURL: URL?
     private var registry: AccountRegistry?
     private var usageCache: UsageCache?
 
     public init(
         baseURL: URL? = nil,
-        legacyBaseURL: URL? = nil,
         activeHomeURL: URL? = nil,
         fileManager: FileManager = .default
     ) {
         self.fileManager = fileManager
-        #if os(Windows)
-        let applicationSupportURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["LOCALAPPDATA"]
-            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("AppData/Local").path)
-        #else
         let applicationSupportURL = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        #endif
         if let baseURL {
             self.baseURL = baseURL
-            self.legacyBaseURL = legacyBaseURL
         } else {
             self.baseURL = applicationSupportURL.appending(
                 path: "Codex Switchboard",
                 directoryHint: .isDirectory
             )
-            self.legacyBaseURL = nil
         }
         self.activeHomeURL = activeHomeURL
             ?? ProcessInfo.processInfo.environment["CODEX_HOME"].map { URL(fileURLWithPath: $0) }
@@ -59,7 +44,6 @@ public actor AccountStore: AccountStoring {
     }
 
     private var accountsURL: URL { baseURL.appending(path: "accounts.json") }
-    private var settingsURL: URL { baseURL.appending(path: "settings.json") }
     private var usageCacheURL: URL { baseURL.appending(path: "usage-cache.json") }
     private var profilesURL: URL { baseURL.appending(path: "accounts", directoryHint: .isDirectory) }
 
@@ -75,17 +59,6 @@ public actor AccountStore: AccountStoring {
         return loaded
     }
 
-    public func loadSettings() throws -> AppSettings {
-        try prepareDirectories()
-        guard fileManager.fileExists(atPath: settingsURL.path) else { return .default }
-        return try Self.decoder.decode(AppSettings.self, from: readChecked(settingsURL))
-    }
-
-    public func saveSettings(_ settings: AppSettings) throws {
-        try prepareDirectories()
-        try writeJSON(settings, to: settingsURL)
-    }
-
     public func loadUsageCache() throws -> UsageCache {
         try prepareDirectories()
         if let usageCache { return usageCache }
@@ -96,19 +69,6 @@ public actor AccountStore: AccountStoring {
         let loaded = try Self.decoder.decode(UsageCache.self, from: readChecked(usageCacheURL))
         usageCache = loaded
         return loaded
-    }
-
-    public func cacheWeeklyUsage(_ usage: WeeklyUsage, profileID: UUID, fetchedAt: Date = Date()) throws {
-        let registry = try loadRegistry()
-        guard registry.accounts.contains(where: { $0.id == profileID }) else { return }
-        var cache = try loadUsageCache()
-        let entry = UsageCacheEntry(profileID: profileID, usage: usage, fetchedAt: fetchedAt)
-        if let index = cache.entries.firstIndex(where: { $0.profileID == profileID }) {
-            cache.entries[index] = entry
-        } else {
-            cache.entries.append(entry)
-        }
-        try saveUsageCache(cache)
     }
 
     public func profile(id: UUID) throws -> AccountProfile {
@@ -282,12 +242,6 @@ public actor AccountStore: AccountStoring {
     private func prepareDirectories() throws {
         try checkPath(baseURL)
         try checkPath(profilesURL)
-        if !fileManager.fileExists(atPath: baseURL.path),
-           let legacyBaseURL,
-           fileManager.fileExists(atPath: legacyBaseURL.path) {
-            try checkPath(legacyBaseURL)
-            try fileManager.moveItem(at: legacyBaseURL, to: baseURL)
-        }
         try fileManager.createDirectory(at: baseURL, withIntermediateDirectories: true)
         try restrictPermissions(baseURL, directory: true)
         try fileManager.createDirectory(at: profilesURL, withIntermediateDirectories: true)
@@ -301,10 +255,6 @@ public actor AccountStore: AccountStoring {
 
     private func checkPath(_ path: URL) throws {
         try SecureFiles.check(path)
-        #if os(Windows)
-        let error = switcher_check_path(path.path)
-        guard error == 0 else { throw windowsError(error) }
-        #endif
     }
 
     private func readChecked(_ path: URL) throws -> Data {
@@ -330,25 +280,8 @@ public actor AccountStore: AccountStoring {
 
     private func restrictPermissions(_ path: URL, directory: Bool) throws {
         try SecureFiles.check(path)
-        #if os(Windows)
-        let error = switcher_restrict_path(path.path, directory ? 1 : 0)
-        guard error == 0 else { throw windowsError(error) }
-        #else
         try fileManager.setAttributes([.posixPermissions: directory ? 0o700 : 0o600], ofItemAtPath: path.path)
-        #endif
     }
-
-    #if os(Windows)
-    private func windowsError(_ code: UInt32) -> NSError {
-        NSError(domain: "CodexAccountSwitcher.Windows", code: Int(code), userInfo: [
-            NSLocalizedDescriptionKey: "Windows could not access private account storage (error \(code)).",
-        ])
-    }
-    #else
-    private func currentPOSIXError() -> POSIXError {
-        POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-    }
-    #endif
 
     private func writeJSON<T: Encodable>(_ value: T, to destination: URL) throws {
         let bytes = try Self.encoder.encode(value)

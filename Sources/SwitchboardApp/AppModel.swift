@@ -141,7 +141,13 @@ final class AppModel: ObservableObject {
     func updateSettings(home: String, cli: String) { perform("Saving advanced settings…") { try await self.command("settings", values: ["codexHome": home, "codexCLI": cli]); try await self.loadAccounts() } }
     func connect(_ provider: String) {
         let path = provider == "devin" ? state?.clis.devin : state?.clis.grok
-        guard let path else { NSWorkspace.shared.open(provider == "devin" ? DevinCLI.installURL : GrokCLI.installURL); return }
+        guard let path else {
+            let instructions = provider == "devin"
+                ? "https://docs.devin.ai/cli/quickstart"
+                : "https://docs.x.ai/build/cli/overview"
+            NSWorkspace.shared.open(URL(string: instructions)!)
+            return
+        }
         perform("Waiting for \(provider == "devin" ? "Devin" : "Grok / xAI") sign-in…") {
             self.signingIn = true
             try await self.command("beginReconnect", values: ["provider": provider])

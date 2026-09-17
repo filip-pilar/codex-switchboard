@@ -1,12 +1,4 @@
-import { checkPath } from "./files.mjs";
-import {
-  closeSync,
-  constants,
-  fchmodSync,
-  fstatSync,
-  openSync,
-  readFileSync,
-} from "node:fs";
+import { readProtected } from "./files.mjs";
 import { devinCredentialsPath } from "./paths.mjs";
 
 export function parseTomlString(source, key) {
@@ -30,23 +22,13 @@ export function parseTomlString(source, key) {
 
 export function readDevinSessionToken(path = devinCredentialsPath) {
   let source;
-  let descriptor;
   try {
-    checkPath(path, { missing: false });
-    descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    const metadata = fstatSync(descriptor);
-    if (!metadata.isFile()) {
-      throw new Error(`Devin credential is not a regular file: ${path}`);
-    }
-    if (metadata.uid !== process.getuid() || metadata.size > 1024 * 1024) throw new Error("Unsafe credential file");
-    source = readFileSync(descriptor, "utf8");
+    source = readProtected(path, { limit: 1024 * 1024 }).toString("utf8");
   } catch (error) {
     throw new Error(
       `Cannot securely read Devin credentials at ${path}. Run \`devin auth login\` first and ensure it is a regular mode-600 file.`,
       { cause: error },
     );
-  } finally {
-    if (descriptor !== undefined) closeSync(descriptor);
   }
 
   const token = parseTomlString(source, "windsurf_api_key")?.trim();

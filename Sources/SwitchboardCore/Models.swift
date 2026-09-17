@@ -1,6 +1,6 @@
 import Foundation
 
-// Shared account and usage types for both native platform clients.
+// Account and usage types shared by the app and account service.
 
 public struct AccountProfile: Codable, Identifiable, Equatable, Hashable, Sendable {
     public let id: UUID
@@ -33,49 +33,6 @@ public struct AccountRegistry: Codable, Equatable, Sendable {
     }
 
     public static let empty = AccountRegistry(activeAccountID: nil, accounts: [])
-}
-
-public enum AppLanguage: String, Codable, CaseIterable, Identifiable, Sendable {
-    case system
-    case english
-    case simplifiedChinese
-
-    public var id: String { rawValue }
-}
-
-public struct AppSettings: Codable, Equatable, Sendable {
-    public var language: AppLanguage
-    public var showsMenuBarPercentage: Bool
-    public var showsFiveHourUsage: Bool
-
-    public static let `default` = AppSettings(
-        language: .system,
-        showsMenuBarPercentage: true,
-        showsFiveHourUsage: false
-    )
-
-    public init(
-        language: AppLanguage,
-        showsMenuBarPercentage: Bool = true,
-        showsFiveHourUsage: Bool = false
-    ) {
-        self.language = language
-        self.showsMenuBarPercentage = showsMenuBarPercentage
-        self.showsFiveHourUsage = showsFiveHourUsage
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
-        showsMenuBarPercentage = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .showsMenuBarPercentage
-        ) ?? true
-        showsFiveHourUsage = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .showsFiveHourUsage
-        ) ?? false
-    }
 }
 
 public struct WeeklyUsage: Codable, Equatable, Sendable {
@@ -115,27 +72,6 @@ public struct UsageCache: Codable, Equatable, Sendable {
     public static let empty = UsageCache(entries: [])
 }
 
-public enum UsageViewState: Equatable, Sendable {
-    case idle
-    case loaded(WeeklyUsage)
-    case stale(WeeklyUsage, String)
-    case unavailable(String)
-
-    public var displayedUsage: WeeklyUsage? {
-        switch self {
-        case let .loaded(usage), let .stale(usage, _):
-            usage
-        case .idle, .unavailable:
-            nil
-        }
-    }
-
-    public var refreshError: String? {
-        guard case let .stale(_, message) = self else { return nil }
-        return message
-    }
-}
-
 public struct AccountIdentity: Equatable, Sendable {
     public let accountID: String?
     public let email: String?
@@ -171,18 +107,16 @@ public enum SwitchStage: String, CaseIterable, Sendable {
 
 public struct OperationError: LocalizedError, Equatable, Sendable {
     public let stage: SwitchStage?
-    public let titleKey: String
-    public let messageKey: String?
     public let message: String
     public let underlyingDescription: String?
 
-    public init(stage: SwitchStage?, titleKey: String, messageKey: String?, message: String, underlyingDescription: String?) {
-        self.stage = stage; self.titleKey = titleKey; self.messageKey = messageKey
+    public init(stage: SwitchStage?, message: String, underlyingDescription: String?) {
+        self.stage = stage
         self.message = message; self.underlyingDescription = underlyingDescription
     }
 
     public var errorDescription: String? {
-        let title = L10n.string(titleKey, language: .english)
+        let title = "Account switch failed"
         if let stage {
             return "\(title) (\(stage.rawValue)): \(message)"
         }
@@ -192,8 +126,6 @@ public struct OperationError: LocalizedError, Equatable, Sendable {
     public static func stage(_ stage: SwitchStage, _ error: any Error) -> OperationError {
         OperationError(
             stage: stage,
-            titleKey: "switch_failed",
-            messageKey: nil,
             message: error.localizedDescription,
             underlyingDescription: String(describing: error)
         )

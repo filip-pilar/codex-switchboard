@@ -123,8 +123,6 @@ public struct SwitchService: SwitchServicing {
         } catch let restorationError {
             return OperationError(
                 stage: failedStage,
-                titleKey: "switch_failed",
-                messageKey: nil,
                 message: """
                 \(originalError.localizedDescription) Restoring the previous credential also failed: \
                 \(restorationError.localizedDescription)
