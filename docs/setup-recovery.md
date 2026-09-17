@@ -2,7 +2,7 @@
 
 ## Before activation
 
-Build the final app package before activation; earlier signed bundles may predate the latest gateway changes. Open `dist/Codex Switchboard.app`. It starts its private control helper; it does not redirect Codex or start the public listener before Apply. The existing gateway/router remains available during development. The app's service uses **127.0.0.1:9477**, separate from the previous setup.
+Build the app using the [README](../README.md), then open `dist/Codex Switchboard.app` (or your installed copy). It starts its private control helper; it does not redirect Codex or start the gateway listener before Apply. The app's service uses **127.0.0.1:9477** and refuses to take over an occupied port.
 
 In Connections, **Import / Refresh Current CLI Session** checks authenticated discovery without an inference request. **Connect / Reconnect** opens the official CLI browser flow. Devin and Grok each use the current official CLI identity. Reconnect pauses that provider, cancels its active requests, and reloads only that worker. Missing CLIs open their official installation instructions; they are not redistributed or automatically upgraded.
 

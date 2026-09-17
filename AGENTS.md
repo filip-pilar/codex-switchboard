@@ -1,10 +1,11 @@
 # Codex Switchboard
 
-One native macOS menu app and one bundled private gateway, focused on Codex Desktop and CLI. Repository development instructions target GPT-6 Astra exclusively. This does not restrict the models supported by the product or change user model/account settings.
+One native macOS menu app and one bundled private gateway, focused on Codex Desktop and CLI. These instructions apply to any coding agent.
 
 ## Context and authority
 
 - This file owns shared agent workflow rules. The current user request determines the task; reviews, audits, and planning are read-only unless changes are authorized.
+- For explanation or installation, start with `README.md` and `docs/setup-recovery.md`. Implementation plans and history are only needed for relevant development work.
 - Use `docs/implementation-plan.md` for product requirements and acceptance criteria relevant to the change. Its original integration sequence is background, not a requirement to restart implementation.
 - Use `docs/implementation-status.md` for the latest implementation checkpoint and recorded evidence when continuing product work; historical passes and time-limited authorization are not fresh verification or renewed permission.
 - Use `docs/implementation-prompt.md` only as a continuation prompt when needed, and `docs/development-workflow.md` for check prerequisites and outstanding live acceptance. Use `README.md` for build commands, `docs/architecture.md` for component boundaries, and `docs/setup-recovery.md` for activation/restore. Read reference provenance only when investigating or reusing source.

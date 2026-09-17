@@ -1,5 +1,14 @@
 # Implementation status
 
+## Repository polish — 2026-09-17
+
+- [x] Make agent guidance model-neutral and route installation questions to the existing user docs.
+- [x] Clarify build prerequisites, source installation, provider setup, experimental limits, and safe bug-report contents.
+- [x] Replace the native test wrapper's fixed ChatGPT app path with shared Codex discovery and an explicit override; skip only the installed-runtime test when Codex is absent.
+- [x] Validate: JavaScript tests 60/60, native tests 25/25 (including the isolated installed-runtime test), changed-document local links, and `git diff --check`.
+
+This pass changes documentation and test tooling only. No app rebuild, live inference, activation, or public-release security audit was performed. Product acceptance below remains open.
+
 ## Current checkpoint — 2026-09-13
 
 The Devin ACP backend and Grok 4.6 gateway changes are implemented and built in the isolated helper. **The installed service and active Codex profile have not been switched to this build.** Earlier signed-app builds predate the final ACP changes; a fresh app package and explicit activation are still needed.

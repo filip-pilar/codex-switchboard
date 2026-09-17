@@ -1,5 +1,7 @@
 # GPT-6 Astra instruction decisions
 
+Historical rationale for the September 12 instruction review. Repository guidance is now model-neutral; `AGENTS.md` owns the current rules.
+
 Reviewed on 2026-09-12 against the complete OpenAI article [Rethinking skills and prompts for GPT-6 Astra](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra), published 2026-09-11. Earlier preparation used [Using GPT-6 Astra](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices); that moving guide is provenance, not required reading for repository tasks.
 
 ## Repository decisions
