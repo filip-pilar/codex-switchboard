@@ -55,12 +55,6 @@ export class SessionCalls {
     session.onCancel();
     return true;
   }
-  close(handle) {
-    const session = this.#sessions.get(handle);
-    if (!session || session.calls.size) return false;
-    this.#sessions.delete(handle);
-    return true;
-  }
   // Ending an SSE response with a tool call is a normal handoff, not cancellation.
   bindResponse(handle, response) {
     const close = () => {

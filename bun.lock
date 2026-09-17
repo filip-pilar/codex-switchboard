@@ -3,19 +3,13 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "llm-local-gateway",
+      "name": "codex-switchboard",
       "dependencies": {
         "smol-toml": "1.4.2",
-        "windsurf-api": "github:dwgx/WindsurfAPI#81370f553718153bcd52297251cc565562d85645",
       },
     },
   },
-  "patchedDependencies": {
-    "windsurf-api@github:dwgx/WindsurfAPI#81370f5": "patches/windsurf-api-swe2-tool-history.patch",
-  },
   "packages": {
     "smol-toml": ["smol-toml@1.4.2", "", {}, "sha512-rInDH6lCNiEyn3+hH8KVGFdbjc099j47+OSgbMrfDYX1CmXLfdKd7qi6IfcWj2wFxvSVkuI46M+wPGYfEOEj6g=="],
-
-    "windsurf-api": ["windsurf-api@github:dwgx/WindsurfAPI#81370f5", { "bin": { "windsurfapi": "src/index.js" } }, "dwgx-WindsurfAPI-81370f5"],
   }
 }

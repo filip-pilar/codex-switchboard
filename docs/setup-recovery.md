@@ -2,7 +2,7 @@
 
 ## Before activation
 
-Build the final app package before activation; earlier signed bundles may predate the latest gateway changes. Open `dist/Codex Switchboard.app`. It starts its private control helper; it does not redirect Codex or start the public listener before Apply. The existing gateway/router remains available during development. The app's service uses **127.0.0.1:9477**, separate from the previous setup.
+Build the app using the [README](../README.md), then open `dist/Codex Switchboard.app` (or your installed copy). It starts its private control helper; it does not redirect Codex or start the gateway listener before Apply. The app's service uses **127.0.0.1:9477** and refuses to take over an occupied port.
 
 In Connections, **Import / Refresh Current CLI Session** checks authenticated discovery without an inference request. **Connect / Reconnect** opens the official CLI browser flow. Devin and Grok each use the current official CLI identity. Reconnect pauses that provider, cancels its active requests, and reloads only that worker. Missing CLIs open their official installation instructions; they are not redistributed or automatically upgraded.
 
@@ -23,7 +23,7 @@ Provider-only setup creates a local sentinel only after the official runtime con
 
 - **Switchboard selection** follows the app menu on each new request. Menu model/effort changes among applied targets need no global config rewrite or restart.
 - **Astra · Devin** takes the request's reasoning choice and maps it to the exact Astra selector. Low/Medium have prior source evidence; higher advertised levels are not labeled live-verified.
-- **Grok · xAI** remains the alias of its originally registered upstream model. The supported direct model is Grok 4.6, with Low/Medium/High/XHigh and inline images. Retired 4.5 entries cannot route; new versions get distinct identities.
+- **Grok 4.6** has its own direct picker entry once enabled, with Low/Medium/High/XHigh and inline images. The old **Grok · xAI** alias (`switchboard-grok`) belongs to retired 4.5 and cannot route; it is not silently repointed to a newer model.
 - **Native Codex models**, including `codex-auto-review`, remain native. Native subagents and existing approval/sandbox settings are retained.
 
 Last request shows the observed provider, actual selector/effort, result and time, separately from the configured menu. It does not claim to identify the foreground task. A missing/unavailable model fails explicitly; it does not silently change provider or model.

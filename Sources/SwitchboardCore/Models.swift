@@ -1,6 +1,6 @@
 import Foundation
 
-// Shared account and usage types for both native platform clients.
+// Account and usage types shared by the app and account service.
 
 public struct AccountProfile: Codable, Identifiable, Equatable, Hashable, Sendable {
     public let id: UUID
@@ -35,104 +35,15 @@ public struct AccountRegistry: Codable, Equatable, Sendable {
     public static let empty = AccountRegistry(activeAccountID: nil, accounts: [])
 }
 
-public enum AppLanguage: String, Codable, CaseIterable, Identifiable, Sendable {
-    case system
-    case english
-    case simplifiedChinese
+public struct RateLimitWindow: Codable, Equatable, Sendable {
+    public let usedPercent: Double
+    public let windowDurationMins: Int
+    public let resetsAt: TimeInterval
 
-    public var id: String { rawValue }
-}
-
-public struct AppSettings: Codable, Equatable, Sendable {
-    public var language: AppLanguage
-    public var showsMenuBarPercentage: Bool
-    public var showsFiveHourUsage: Bool
-
-    public static let `default` = AppSettings(
-        language: .system,
-        showsMenuBarPercentage: true,
-        showsFiveHourUsage: false
-    )
-
-    public init(
-        language: AppLanguage,
-        showsMenuBarPercentage: Bool = true,
-        showsFiveHourUsage: Bool = false
-    ) {
-        self.language = language
-        self.showsMenuBarPercentage = showsMenuBarPercentage
-        self.showsFiveHourUsage = showsFiveHourUsage
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
-        showsMenuBarPercentage = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .showsMenuBarPercentage
-        ) ?? true
-        showsFiveHourUsage = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .showsFiveHourUsage
-        ) ?? false
-    }
-}
-
-public struct WeeklyUsage: Codable, Equatable, Sendable {
-    public let remainingPercent: Int
-    public let resetsAt: Date
-    public let fiveHourRemainingPercent: Int?
-    public let fiveHourResetsAt: Date?
-
-    public init(
-        remainingPercent: Int,
-        resetsAt: Date,
-        fiveHourRemainingPercent: Int? = nil,
-        fiveHourResetsAt: Date? = nil
-    ) {
-        self.remainingPercent = remainingPercent
+    public init(usedPercent: Double, windowDurationMins: Int, resetsAt: TimeInterval) {
+        self.usedPercent = usedPercent
+        self.windowDurationMins = windowDurationMins
         self.resetsAt = resetsAt
-        self.fiveHourRemainingPercent = fiveHourRemainingPercent
-        self.fiveHourResetsAt = fiveHourResetsAt
-    }
-}
-
-public struct UsageCacheEntry: Codable, Equatable, Sendable {
-    public let profileID: UUID
-    public let usage: WeeklyUsage
-    public let fetchedAt: Date
-
-    public init(profileID: UUID, usage: WeeklyUsage, fetchedAt: Date) {
-        self.profileID = profileID; self.usage = usage; self.fetchedAt = fetchedAt
-    }
-}
-
-public struct UsageCache: Codable, Equatable, Sendable {
-    public var entries: [UsageCacheEntry]
-
-    public init(entries: [UsageCacheEntry]) { self.entries = entries }
-
-    public static let empty = UsageCache(entries: [])
-}
-
-public enum UsageViewState: Equatable, Sendable {
-    case idle
-    case loaded(WeeklyUsage)
-    case stale(WeeklyUsage, String)
-    case unavailable(String)
-
-    public var displayedUsage: WeeklyUsage? {
-        switch self {
-        case let .loaded(usage), let .stale(usage, _):
-            usage
-        case .idle, .unavailable:
-            nil
-        }
-    }
-
-    public var refreshError: String? {
-        guard case let .stale(_, message) = self else { return nil }
-        return message
     }
 }
 
@@ -171,18 +82,16 @@ public enum SwitchStage: String, CaseIterable, Sendable {
 
 public struct OperationError: LocalizedError, Equatable, Sendable {
     public let stage: SwitchStage?
-    public let titleKey: String
-    public let messageKey: String?
     public let message: String
     public let underlyingDescription: String?
 
-    public init(stage: SwitchStage?, titleKey: String, messageKey: String?, message: String, underlyingDescription: String?) {
-        self.stage = stage; self.titleKey = titleKey; self.messageKey = messageKey
+    public init(stage: SwitchStage?, message: String, underlyingDescription: String?) {
+        self.stage = stage
         self.message = message; self.underlyingDescription = underlyingDescription
     }
 
     public var errorDescription: String? {
-        let title = L10n.string(titleKey, language: .english)
+        let title = "Account switch failed"
         if let stage {
             return "\(title) (\(stage.rawValue)): \(message)"
         }
@@ -192,8 +101,6 @@ public struct OperationError: LocalizedError, Equatable, Sendable {
     public static func stage(_ stage: SwitchStage, _ error: any Error) -> OperationError {
         OperationError(
             stage: stage,
-            titleKey: "switch_failed",
-            messageKey: nil,
             message: error.localizedDescription,
             underlyingDescription: String(describing: error)
         )
@@ -238,7 +145,6 @@ public enum CodexClientError: LocalizedError, Equatable, Sendable {
     case connectionClosedWithDetails(String)
     case timeout
     case identityUnavailable
-    case weeklyUsageUnavailable
     case loginFailed(String)
 
     public var errorDescription: String? {
@@ -259,8 +165,6 @@ public enum CodexClientError: LocalizedError, Equatable, Sendable {
             "Codex app-server did not respond before the timeout."
         case .identityUnavailable:
             "Codex did not return an account identity."
-        case .weeklyUsageUnavailable:
-            "No weekly Codex Usage window is available."
         case let .loginFailed(message):
             "Codex login failed: \(message)"
         }

@@ -1,8 +1,6 @@
 import Foundation
 import Darwin
-#if canImport(AppKit)
 import AppKit
-#endif
 
 public enum JSONValue: Decodable, Sendable {
     case object([String: JSONValue])
@@ -150,8 +148,6 @@ private final class LinePump: @unchecked Sendable {
 
 private final class StderrDrain: @unchecked Sendable {
     private let lock = NSLock()
-    private var tail = Data()
-    private let maximumBytes = 4_096
 
     private var isFinished = false
     private var waiters: [CheckedContinuation<String, Never>] = []
@@ -190,12 +186,7 @@ private final class StderrDrain: @unchecked Sendable {
                 self.finish()
                 return
             }
-            self.lock.lock()
             // Discard raw stderr; it is not diagnostic output.
-            if self.tail.count > self.maximumBytes {
-                self.tail.removeFirst(self.tail.count - self.maximumBytes)
-            }
-            self.lock.unlock()
         }
     }
 }
@@ -391,34 +382,6 @@ public struct CodexExecutableLocator: Sendable {
                 return URL(fileURLWithPath: path)
             }
         }
-        #if os(Windows)
-        if executable.contains("/") || executable.contains("\\") {
-            guard URL(fileURLWithPath: executable).path == executable.replacingOccurrences(of: "\\", with: "/")
-                    || (executable.count > 2 && executable[executable.index(after: executable.startIndex)] == ":") else {
-                throw CodexClientError.executableNotFound
-            }
-            guard isExecutable(executable) else { throw CodexClientError.executableNotFound }
-            return URL(fileURLWithPath: executable)
-        }
-        for directory in (environment["Path"] ?? environment["PATH"] ?? "").split(separator: ";") {
-            let candidate = URL(fileURLWithPath: String(directory)).appendingPathComponent(
-                executable.lowercased().hasSuffix(".exe") ? executable : executable + ".exe")
-            if isExecutable(candidate.path) { return candidate }
-        }
-        if let local = environment["LOCALAPPDATA"] {
-            let bin = URL(fileURLWithPath: local).appendingPathComponent("OpenAI/Codex/bin")
-            let versions = (try? FileManager.default.contentsOfDirectory(at: bin,
-                includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
-            for version in versions.sorted(by: {
-                let left = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                let right = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                return left > right
-            }) {
-                let candidate = version.appendingPathComponent("codex.exe")
-                if isExecutable(candidate.path) { return candidate }
-            }
-        }
-        #else
         if executable.contains("/") {
             guard executable.hasPrefix("/"), isExecutable(executable) else {
                 throw CodexClientError.processLaunchFailed("CODEX_CLI_PATH is not executable: \(executable)")
@@ -433,7 +396,6 @@ public struct CodexExecutableLocator: Sendable {
         {
             return URL(fileURLWithPath: path)
         }
-        #endif
         throw CodexClientError.executableNotFound
     }
 
@@ -445,18 +407,12 @@ public struct CodexExecutableLocator: Sendable {
     }
 
     private func isExecutable(_ path: String) -> Bool {
-        #if os(Windows)
-        var isDirectory: ObjCBool = false
-        return path.lowercased().hasSuffix(".exe")
-            && FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && !isDirectory.boolValue
-        #else
         FileManager.default.isExecutableFile(atPath: path)
-        #endif
     }
 }
 
 public protocol AccountClient: CodexIdentityReading {
-    func readWeeklyUsage(profileHome: URL) async throws -> WeeklyUsage
+    func readUsageWindows(profileHome: URL) async throws -> [RateLimitWindow]
     func login(profileHome: URL) async throws -> AccountIdentity
 }
 
@@ -476,13 +432,9 @@ public struct CodexClient: AccountClient {
     }
 
     public static func defaultOpenBrowser(_ url: URL) async throws {
-        #if canImport(AppKit)
         guard await MainActor.run(body: { NSWorkspace.shared.open(url) }) else {
             throw CodexClientError.loginFailed("The sign-in page could not be opened.")
         }
-        #else
-        throw CodexClientError.loginFailed("A native browser adapter is required.")
-        #endif
     }
 
     public func authenticationPresent(profileHome: URL) async throws -> Bool {
@@ -512,17 +464,6 @@ public struct CodexClient: AccountClient {
             try await session.request(method: "account/rateLimits/read", id: 1, timeout: requestTimeout)
         }
         return parseWindows(result)
-    }
-
-    public func readWeeklyUsage(profileHome: URL) async throws -> WeeklyUsage {
-        let result = try await withSession(profileHome: profileHome) { session in
-            try await session.request(
-                method: "account/rateLimits/read",
-                id: 1,
-                timeout: requestTimeout
-            )
-        }
-        return try WeeklyUsageNormalizer.normalize(parseWindows(result))
     }
 
     public func login(profileHome: URL) async throws -> AccountIdentity {

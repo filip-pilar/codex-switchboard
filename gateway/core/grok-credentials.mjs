@@ -1,13 +1,5 @@
-import { checkPath } from "./files.mjs";
+import { readProtected } from "./files.mjs";
 import { execFile, spawnSync } from "node:child_process";
-import {
-  closeSync,
-  constants,
-  fchmodSync,
-  fstatSync,
-  openSync,
-  readFileSync,
-} from "node:fs";
 import { grokCredentialsPath } from "./paths.mjs";
 
 const GROK_OIDC_SCOPE =
@@ -40,24 +32,14 @@ export function sanitizeGrokChildEnvironment(env = process.env) {
 }
 
 export function readGrokAccessToken(path = grokCredentialsPath) {
-  let descriptor;
   let source;
   try {
-    checkPath(path, { missing: false });
-    descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    const metadata = fstatSync(descriptor);
-    if (!metadata.isFile()) {
-      throw new Error(`Grok credential is not a regular file: ${path}`);
-    }
-    if (metadata.uid !== process.getuid() || metadata.size > 1024 * 1024) throw new Error("Unsafe credential file");
-    source = readFileSync(descriptor, "utf8");
+    source = readProtected(path, { limit: 1024 * 1024 }).toString("utf8");
   } catch (error) {
     throw new Error(
       `Cannot securely read the official Grok CLI session at ${path}. Run \`grok login\` first and ensure it is a regular mode-600 file.`,
       { cause: error },
     );
-  } finally {
-    if (descriptor !== undefined) closeSync(descriptor);
   }
 
   let document;

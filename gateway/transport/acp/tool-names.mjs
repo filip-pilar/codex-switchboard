@@ -16,16 +16,3 @@ export function findCallerTool(tools, name, allowRelayPrefix = true) {
   }
   return matches[0];
 }
-
-export function isCallerTool(tools, name) {
-  try {
-    return Boolean(
-      findCallerTool(
-        tools.filter((t) => t.type === "function"),
-        name,
-      ),
-    );
-  } catch {
-    return false;
-  }
-}

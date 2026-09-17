@@ -24,9 +24,11 @@ struct CodexClientTransportTests {
         let client = makeClient()
         let identity = try await client.readIdentity(profileHome: home)
         #expect(identity.accountID == "fixture")
-        let usage = try await client.readWeeklyUsage(profileHome: home)
-        #expect(usage.remainingPercent == 42)
-        #expect(usage.fiveHourRemainingPercent == 67)
+        let windows = try await client.readUsageWindows(profileHome: home)
+        #expect(windows == [
+            RateLimitWindow(usedPercent: 33, windowDurationMins: 300, resetsAt: 2_000_000_000),
+            RateLimitWindow(usedPercent: 58, windowDurationMins: 10_080, resetsAt: 2_000_000_000),
+        ])
     }
 
     @Test func loginAcceptsCompletionBeforeStartResponse() async throws {

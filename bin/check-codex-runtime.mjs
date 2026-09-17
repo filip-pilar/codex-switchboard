@@ -6,7 +6,7 @@ import {once} from 'node:events';
 import assert from 'node:assert/strict';
 import {privateDirectory,writeJSON,atomicWrite} from '../gateway/core/files.mjs';
 import {nativeCatalog,combinedCatalog,findCodex} from '../gateway/codex/catalog.mjs';
-import {initialRegistry,mergeDiscovery,normalizeDiscovery} from '../gateway/core/registry.mjs';
+import {initialRegistry,mergeDiscovery,normalizeDiscovery,stableSlug} from '../gateway/core/registry.mjs';
 const root=mkdtempSync('/private/tmp/switchboard-runtime-'),home=privateDirectory(join(root,'codex'));
 const codex=findCodex(),seen=[];
 let server,child;
@@ -18,7 +18,7 @@ const run=(args,env)=>new Promise((resolve,reject)=>{
 try{
  const native=await nativeCatalog(process.env.CODEX_HOME ?? join(process.env.HOME,'.codex'));
  let registry=mergeDiscovery(initialRegistry(),'devin',normalizeDiscovery('devin',['low','medium','high','xhigh','max'].map(e=>({selector:`gpt-6-astra-${e}`})),{scope:'fixture'}),'fixture');
- registry=mergeDiscovery(registry,'grok',normalizeDiscovery('grok',[{id:'grok-4.5'}],{scope:'fixture'}),'fixture');
+ registry=mergeDiscovery(registry,'grok',normalizeDiscovery('grok',[{id:'grok-4.6'}],{scope:'fixture'}).map(model=>({...model,enabled:true})),'fixture');
  const catalog=combinedCatalog(native,registry),catalogPath=join(root,'models.json');writeJSON(catalogPath,catalog);
  writeJSON(join(home,'auth.json'),{OPENAI_API_KEY:'codex-switchboard-local-only'});
  server=createServer(async(req,res)=>{
@@ -45,7 +45,8 @@ try{
  const models=result.data ?? result.models ?? [];
  const ids=models.map(m=>m.id??m.model);
  assert.ok(ids.includes('switchboard-devin-astra'),'Astra must be exposed by actual runtime model/list');
- assert.ok(ids.includes('switchboard-grok'),'Grok must be exposed by actual runtime model/list');
+ assert.ok(ids.includes(stableSlug('grok','grok-4.6')),'Grok 4.6 must be exposed by actual runtime model/list');
+ assert.ok(!ids.includes('switchboard-grok'),'Retired Grok 4.5 alias must not be exposed');
  assert.ok(ids.includes('switchboard-selected'),'menu alias must be exposed by actual runtime model/list');
  const astra=models.find(m=>(m.id??m.model)==='switchboard-devin-astra');
  assert.ok((astra.supportedReasoningEfforts??astra.supported_reasoning_levels??[]).some(e=>(e.reasoningEffort??e.effort)==='max'),'Max must be accepted by installed schema');
