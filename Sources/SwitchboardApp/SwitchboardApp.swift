@@ -17,7 +17,11 @@ final class SwitchboardDelegate: NSObject, NSApplicationDelegate {
         model = AppModel()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Codex Switchboard")
+            let icon = NSImage(named: "StatusIconTemplate")
+                ?? NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Codex Switchboard")
+            icon?.size = NSSize(width: 20, height: 20)
+            icon?.isTemplate = true
+            button.image = icon
             button.toolTip = "Codex Switchboard"
             button.target = self; button.action = #selector(togglePopover)
         }
@@ -35,8 +39,8 @@ final class SwitchboardDelegate: NSObject, NSApplicationDelegate {
     }
     private func presentPopover(relativeTo rect: NSRect, of view: NSView) {
         if popover.isShown { popover.performClose(nil) }
-        let fitting = popover.contentViewController?.view.fittingSize ?? NSSize(width: 405, height: 700)
-        popover.contentSize = NSSize(width: 405, height: min(800, max(580, fitting.height)))
+        let fitting = popover.contentViewController?.view.fittingSize ?? NSSize(width: 360, height: 360)
+        popover.contentSize = NSSize(width: 360, height: min(700, max(280, fitting.height)))
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: rect, of: view, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
