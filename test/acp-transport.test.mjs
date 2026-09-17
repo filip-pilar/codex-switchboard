@@ -80,6 +80,25 @@ function events(text) {
     .map((l) => JSON.parse(l.slice(5)));
 }
 
+// Preserve the private-boundary regression against the current transport.
+test("private ACP boundary stays on loopback and rejects unauthorized routes", async () => {
+  const f = await fixture();
+  try {
+    assert.equal(f.server.address().address, "127.0.0.1");
+    const base = `http://127.0.0.1:${f.server.address().port}`;
+    for (const [route, method, headers] of [
+      ["/v1/responses", "POST", {}],
+      ["/v1/messages", "POST", { "x-api-key": "test-capability-123456" }],
+      ["/dashboard", "GET", { "x-api-key": "test-capability-123456" }],
+      ["/v1/responses", "POST", { "x-api-key": "test-capability-123456", origin: "https://example.test" }],
+    ]) {
+      assert.equal((await fetch(base + route, { method, headers })).status, 403);
+    }
+  } finally {
+    await f.close();
+  }
+});
+
 test("integrated ACP binds results to their conversation and enforces session capacity", async () => {
   const f = await fixture({ maxSessions: 1 });
   try {

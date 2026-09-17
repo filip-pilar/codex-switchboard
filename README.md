@@ -34,7 +34,7 @@ node bin/check-codex-runtime.mjs
 node bin/check-packaging.mjs
 ```
 
-Build output: `dist/Codex Switchboard.app`. The legacy pinned dependency and patch remain in build staging and historical transport checks; Devin inference now uses ACP. Neither old gateway/router app nor `references/extracted/` is required at runtime or for an ordinary build after dependency installation.
+The UI and account management are Swift; the bundled JavaScript gateway handles provider protocols and streaming. Neither the old gateway/router apps nor their source archives are needed to build or run Switchboard.
 
 `check-codex-runtime` uses an isolated local fixture, not provider inference. `check-discovery` and `check-provider-start` use an existing official Devin session only for non-inference catalog/startup checks. `check-control-transaction` uses the app’s normalized discovery cache and applies/restores only an isolated Codex home. The checks above do not perform live inference. The explicitly invoked `experiments/acp/gateway-acceptance.mjs` driver does; run it only with authorization.
 
@@ -47,13 +47,13 @@ See the [compatibility matrix](docs/compatibility-validation.md) for exact selec
 ## Use
 
 1. Open the app, then **Manage → Connections**. Import/refresh an existing official CLI session or use **Connect** for browser sign-in. Add/import native accounts in **Accounts**.
-2. In **Models**, choose **Show in Codex** for compatible discoveries. Astra and the registered Grok model are initial defaults; new models stay disabled.
+2. In **Models**, choose **Show in Codex** for compatible discoveries. Astra is enabled initially; other discoveries, including Grok 4.6, need enabling.
 3. In **Setup**, review any existing integration, choose explicit migration if needed, and **Apply and Restart Codex…**. Choose **Apply, Restart Later** while active tasks are still running.
-4. After restarting Codex, choose **Switchboard selection** in its actual picker to follow the menu. **Astra · Devin** and **Grok · xAI** keep direct routing; native entries remain native.
+4. After restarting Codex, choose **Switchboard selection** in its actual picker to follow the menu. **Astra · Devin** and the enabled Grok 4.6 entry keep direct routing; native entries remain native.
 5. Use **Restore Integration…** in Setup to return owned settings. Resolve specific conflicts, then restart Codex.
 
 The gateway uses `127.0.0.1:9477`. It never takes over an unknown listener, rotates accounts, changes sandbox/approval policy, or falls back to a different provider. External compaction and unsafe private continuation require a new task. Grok 4.6 exposes the reviewed image and reasoning contract; Grok 4.5 is retired.
 
-For installation and troubleshooting, see [setup and recovery](docs/setup-recovery.md). For contributions, see [AGENTS.md](AGENTS.md), [development checks](docs/development-workflow.md), [architecture](docs/architecture.md), and the [current checkpoint](docs/implementation-status.md). Bug reports should include the app/CLI versions and **Copy Safe Diagnostics**, never credential files or raw request logs.
+For installation and troubleshooting, see [setup and recovery](docs/setup-recovery.md). For contributions, see [AGENTS.md](AGENTS.md), [development checks](docs/development-workflow.md), [architecture](docs/architecture.md). Bug reports should include the app/CLI versions and **Copy Safe Diagnostics**, never credential files or raw request logs.
 
 Licensed under [MIT](LICENSE). Reused-source and bundled-runtime notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), with [source provenance](docs/source-provenance.md) recorded separately. This is an independent project, not an official OpenAI, Cognition, or xAI app.

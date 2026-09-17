@@ -22,7 +22,6 @@ export function resolveBridgePaths(env = process.env) {
     grokCredentialsPath: join(grokHome, "auth.json"),
     grokCLIPath: resolve(env.GROK_CLI || join(grokHome, "bin", "grok")),
     devinCredentialsPath,
-    devinUpstreamDataDir: join(bridgeDataDir, "devin", "windsurfapi"),
     legacyGatewayKeyPath: join(bridgeDataDir, "gateway.key"),
   };
 }
@@ -33,6 +32,5 @@ export const {
   grokCredentialsPath,
   grokCLIPath,
   devinCredentialsPath,
-  devinUpstreamDataDir,
   legacyGatewayKeyPath,
 } = resolveBridgePaths();

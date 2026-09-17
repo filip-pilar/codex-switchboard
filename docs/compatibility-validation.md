@@ -44,7 +44,7 @@ Both SWE-1.7 unsuffixed selectors mean **Max**, not a default or Low setting. Th
 - The remaining nine families received 36 integrated image/search/web/peer probes. Initial sweep: 31 passes; five targeted retries brought that to 35/36. Astra deferred search then received the accepted focused follow-up above.
 - SWE-2 had earlier integrated image, search, web, two-child and compiled sibling-follow-up passes. Native Grok 4.6 retains its separate earlier gateway verification; it was not rerun in the Devin-only sweep.
 - Search passes require discovery, execution of a caller-side laboratory tool and exact random-value delivery. Live web passes require a real completed search and the expected official documentation answer.
-- Peer retry passes use explicit readiness and an idle sibling follow-up. Earlier active-wait failures/timeouts remain in the history; arbitrary concurrent queues and mixed-provider task trees are not certified.
+- Peer retry passes use explicit readiness and an idle sibling follow-up. Earlier active-wait failures/timeouts are recorded in Git history; arbitrary concurrent queues and mixed-provider task trees are not certified.
 - Images are inline fixtures, not every multimodal tool-output form. Image generation is outside this matrix; cached-only search, external private compaction and remote image fetching retain their explicit restrictions.
 - Structured web citation fidelity and provider usage-counter accounting semantics remain unverified.
 - Native Codex workspace sandbox and approvals remain enforced. Outer test-sandbox nesting caused permission-denied diagnostic runs; approved host execution resolved that without disabling Codex sandboxing.
@@ -53,4 +53,12 @@ Both SWE-1.7 unsuffixed selectors mean **Max**, not a default or Low setting. Th
 
 See [ACP acceptance instructions](../experiments/acp/README.md) and [development workflow](development-workflow.md). Live inference requires current authorization and existing official CLI sign-in; use private scratch state and at least ten-second gaps. `ACP_EXPLICIT_DISCOVERY=1` selects the diagnostic prompt; ordinary controls leave it unset. A zero CLI exit alone does not count as a pass.
 
-Local metadata evidence: `gateway-acp-matrix-*.json`, `integrated-retest-verified.json`, and `astra-low-discovery-followup.json` under ignored `.build/compat-audit/`. These local files are not shipped. The [historical validation record](compatibility-history.md) preserves provenance, failed attempts and intermediate conclusions; this page supersedes its stale status statements.
+Local metadata evidence: `gateway-acp-matrix-*.json`, `integrated-retest-verified.json`, and `astra-low-discovery-followup.json` under ignored `.build/compat-audit/`. These local files are not shipped. Earlier validation records, including failed attempts and intermediate conclusions, remain in Git history before the repository cleanup.
+
+## Outstanding acceptance
+
+- Activate a freshly built app only with explicit authorization, then verify a real Desktop workflow and setup/restore.
+- Complete a user-assisted native two-account handoff.
+- Verify structured citations, provider usage accounting, and broader concurrent/mixed-provider workflows.
+
+The September 17 repository cleanup is not new live-provider evidence.

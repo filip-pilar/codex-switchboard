@@ -100,7 +100,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-## WindsurfAPI (pinned 81370f553718153bcd52297251cc565562d85645)
+## WindsurfAPI (historical dependency, 81370f553718153bcd52297251cc565562d85645)
 
 MIT License
 
@@ -159,4 +159,4 @@ The helper embeds the Bun runtime. The exact upstream notice, linked-library inv
 
 ## Vendored image codecs in WindsurfAPI
 
-The pinned dependency includes jpeg-js 0.4.4: BSD-3-Clause package (Eugene Ware), Apache-2.0 decoder (notmasteryet), and BSD-style encoder (Adobe Systems Incorporated). Full package license, component copyright notices, and Apache 2.0 text are included under `licenses/` in this repository and app bundle. The PNG decoder is original WindsurfAPI MIT code.
+The former WindsurfAPI dependency included jpeg-js 0.4.4 (these historical notices are retained; the dependency is no longer bundled): BSD-3-Clause package (Eugene Ware), Apache-2.0 decoder (notmasteryet), and BSD-style encoder (Adobe Systems Incorporated). Full package license, component copyright notices, and Apache 2.0 text are included under `licenses/` in this repository and app bundle. The PNG decoder is original WindsurfAPI MIT code.
