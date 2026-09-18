@@ -53,6 +53,7 @@ final class AppModel: ObservableObject {
             try helper.start()
             state = try await helper.state("initialize")
             try await loadAccounts()
+            failure = nil
             if state?.integration.installed != true && window == nil { tab = "Setup"; showManage() }
             usageTimer?.cancel()
             usageTimer = Task { [weak self] in
@@ -68,7 +69,7 @@ final class AppModel: ObservableObject {
         guard !quitting else { return }
         helperRestarts += 1
         failure = "The helper stopped. Codex routing is unavailable until it restarts."
-        guard helperRestarts <= 3 else { failure = "The helper stopped repeatedly. Reopen Switchboard and copy safe diagnostics if the problem continues."; return }
+        guard helperRestarts <= 3 else { failure = "Couldn’t reconnect. Quit and reopen Switchboard."; return }
         Task { try? await Task.sleep(for: .seconds(pow(2.0, Double(helperRestarts)))); await bootstrap() }
     }
     func showManage(_ selectedTab: String? = nil) {

@@ -13,6 +13,13 @@ final class SwitchboardDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let identifier = Bundle.main.bundleIdentifier,
+           let existing = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
+            .first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) {
+            existing.activate(options: [.activateAllWindows])
+            NSApp.terminate(nil)
+            return
+        }
         NSApp.setActivationPolicy(.accessory)
         model = AppModel()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -46,7 +53,7 @@ final class SwitchboardDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController?.view.window?.makeKey()
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if model?.allowsTermination == true { return .terminateNow }
+        if model == nil || model?.allowsTermination == true { return .terminateNow }
         DispatchQueue.main.async { [weak self] in self?.model?.requestQuit() }
         return .terminateCancel
     }

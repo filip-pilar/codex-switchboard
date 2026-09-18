@@ -12,6 +12,7 @@ final class HelperClient {
     private var buffer = Data()
     private var nextID = 1
     private var intentionalStop = false
+    private var startupFailure: SafeFailure?
     private var pending: [Int: (CheckedContinuation<Data, Error>, Task<Void, Never>)] = [:]
     let dataDirectory: URL
 
@@ -22,6 +23,7 @@ final class HelperClient {
     func start() throws {
         guard process == nil else { return }
         intentionalStop = false
+        startupFailure = nil
         try SecureFiles.directory(dataDirectory)
         guard let bundled = Bundle.main.url(forResource: "switchboard-helper", withExtension: nil) else { throw SafeFailure(code: "helper_missing", message: "The bundled helper is missing. Rebuild or reinstall Codex Switchboard.") }
         let bytes = try SecureFiles.read(bundled, limit: 160 * 1024 * 1024)
@@ -47,12 +49,20 @@ final class HelperClient {
         for key in environment.keys where key.hasPrefix("CODEIUM_") || key.hasPrefix("WINDSURFAPI_") || ["API_KEY", "DATA_DIR", "GROK_API_KEY", "XAI_API_KEY"].contains(key) { environment.removeValue(forKey: key) }
         child.environment = environment
         child.standardInput = stdinPipe; child.standardOutput = stdoutPipe; child.standardError = FileHandle.nullDevice
-        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self, weak child] handle in
             let data = handle.availableData
             if data.isEmpty { handle.readabilityHandler = nil; return }
-            Task { @MainActor in self?.receive(data) }
+            Task { @MainActor in
+                guard let child, self?.process === child else { return }
+                self?.receive(data)
+            }
         }
-        child.terminationHandler = { [weak self] _ in Task { @MainActor in self?.terminated() } }
+        child.terminationHandler = { [weak self] child in
+            Task { @MainActor in
+                guard self?.process === child else { return }
+                self?.terminated()
+            }
+        }
         try child.run()
         process = child; input = stdinPipe.fileHandleForWriting
     }
@@ -63,7 +73,12 @@ final class HelperClient {
             let line = Data(buffer[..<newline]); buffer.removeSubrange(...newline)
             guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { continue }
             if let state = object["status"], let encoded = try? JSONSerialization.data(withJSONObject: state), let decoded = try? JSONDecoder().decode(HelperState.self, from: encoded) { onState?(decoded) }
-            if let event = object["event"] as? String, event == "fatal" { terminated(); continue }
+            if let event = object["event"] as? String, event == "fatal" {
+                if let error = object["error"], let encoded = try? JSONSerialization.data(withJSONObject: error) {
+                    startupFailure = try? JSONDecoder().decode(SafeFailure.self, from: encoded)
+                }
+                continue
+            }
             guard let id = object["requestID"] as? Int, let (continuation, timeout) = pending.removeValue(forKey: id) else { continue }
             timeout.cancel()
             if let error = object["error"], let encoded = try? JSONSerialization.data(withJSONObject: error), let decoded = try? JSONDecoder().decode(SafeFailure.self, from: encoded) { continuation.resume(throwing: decoded) }
@@ -94,7 +109,7 @@ final class HelperClient {
         guard process != nil || !pending.isEmpty else { return }
         process = nil; input = nil; buffer.removeAll()
         let items = pending.values; pending.removeAll()
-        for (continuation, timeout) in items { timeout.cancel(); continuation.resume(throwing: SafeFailure(code: "helper_stopped", message: "The bundled helper stopped. The app will retry with bounded backoff.")) }
+        for (continuation, timeout) in items { timeout.cancel(); continuation.resume(throwing: startupFailure ?? SafeFailure(code: "helper_stopped", message: "Switchboard lost its background connection. Reconnecting…")) }
         if !intentionalStop { onExit?() }
     }
     func stop() {
